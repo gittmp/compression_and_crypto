@@ -1,3 +1,4 @@
 spec.pdf
 encrypt.exe
 testEncoderDecoder.py
+venv/**

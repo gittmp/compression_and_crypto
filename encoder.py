@@ -22,11 +22,12 @@ if file.mode == 'r':
     print("File contents: ", file_contents)
 """
 
-sequence = "--ABABACCA"
+sequence = "ABABACCA"
 alphabet_size = 3
 
+sequence = "--" + sequence
 N = 2
-D = [{"esc": 1},
+D = [{},
      {},
      {}]
 encodings = []
@@ -34,29 +35,19 @@ outputs = []
 
 
 def ppm_step(symbol, n, context, exclusion_list):
-    if n > 0:
-        if context in D[n].keys():
-            if symbol in D[n][context].keys():
-                p = D[n][context][symbol] / sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
-                D[n][context][symbol] += 1
-                out = {"symbol": symbol, "probability": p}
-            else:
-                p = D[n][context]["esc"] / sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
-                exclusion_list.extend([k for k in D[n][context].keys() if k != "esc" and k not in exclusion_list])
-                D[n][context][symbol] = 1
-                out = {"symbol": "esc", "probability": p}
+    if context in D[n].keys():
+        if symbol in D[n][context].keys():
+            p = D[n][context][symbol] / sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
+            D[n][context][symbol] += 1
+            out = {"symbol": symbol, "probability": round(p, 4)}
         else:
-            D[n][context] = {"esc": 1, symbol: 1}
-            out = {"symbol": "esc", "probability": 1}
-    else:  # n == 0
-        if symbol in D[n].keys():
-            p = D[n][symbol] / sum([D[n][k] for k in D[n].keys() if k not in exclusion_list])
-            D[n][symbol] += 1
-            out = {"symbol": symbol, "probability": p}
-        else:
-            p = D[n]["esc"] / sum([D[n][k] for k in D[n].keys() if k not in exclusion_list])
-            D[n][symbol] = 1
-            out = {"symbol": "esc", "probability": p}
+            p = D[n][context]["esc"] / sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
+            exclusion_list.extend([k for k in D[n][context].keys() if k != "esc" and k not in exclusion_list])
+            D[n][context][symbol] = 1
+            out = {"symbol": "esc", "probability": round(p, 4)}
+    else:
+        D[n][context] = {"esc": 1, symbol: 1}
+        out = {"symbol": "esc", "probability": 1.0}
 
     print("output = ", out)
     print("exclusion list = ", exclusion_list)
@@ -65,7 +56,7 @@ def ppm_step(symbol, n, context, exclusion_list):
 
 
 def order_minus1(symbol):
-    out = {"symbol": symbol, "probability": 1/alphabet_size}
+    out = {"symbol": symbol, "probability": round(1/alphabet_size, 4)}
     return out
 
 
@@ -77,6 +68,7 @@ for i in range(N, len(sequence)):
     n = N
     symb = sequence[i]
     excluded = []
+    print()
     while n > -2:
         context = sequence[i-n:i]
         print("symbol=", symb, " n=", n, " context=", context)
@@ -94,7 +86,11 @@ for i in range(N, len(sequence)):
         else:
             n -= 1
 
-print("\nOUTPUTS =", outputs)
-print("D = ")
+print("D =")
 for m in range(N+1):
     print(D[m])
+
+print("\n\nOUTPUTS =")
+for i in range(len(outputs)):
+    print(outputs[i])
+

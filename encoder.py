@@ -21,60 +21,18 @@ if file.mode == 'r':
     file_contents = file.read()
     print("File contents: ", file_contents)
 """
+import math
 
-sequence = "ABABACCA"
-alphabet_size = 3
+sequence = "ALOMOHORA_AHOROMOLA_AROHOMOLA_ALOHOMOR"
+alphabet_size = 7
 
-N = 2
+print("Sequence to encode:", sequence, end='\n\n')
+
+N = 4
 sequence = "-"*N + sequence
 D = [{} for i in range(N+1)]
 encodings = []
 outputs = []
-
-
-# METHOD A: esc count = 1
-def ppm_step_a(symbol, n, context, exclusion_list):
-    if context in D[n].keys():
-        if symbol in D[n][context].keys():
-            p = D[n][context][symbol] / sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
-            D[n][context][symbol] += 1
-            out = {"symbol": symbol, "probability": p}
-        else:
-            p = D[n][context]["esc"] / sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
-            exclusion_list.extend([k for k in D[n][context].keys() if k != "esc" and k not in exclusion_list])
-            D[n][context][symbol] = 1
-            out = {"symbol": "esc", "probability": p}
-    else:
-        D[n][context] = {"esc": 1, symbol: 1}
-        out = {"symbol": "esc", "probability": 1.0}
-
-    print("output = ", out)
-    print("exclusion list = ", exclusion_list)
-
-    return out, exclusion_list
-
-
-# METHOD C: esc count = no. distinct symbols in context dict
-def ppm_step_c(symbol, n, context, exclusion_list):
-    if context in D[n].keys():
-        if symbol in D[n][context].keys():
-            p = D[n][context][symbol] / sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
-            D[n][context][symbol] += 1
-            out = {"symbol": symbol, "probability": p}
-        else:
-            p = D[n][context]["esc"] / sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
-            exclusion_list.extend([k for k in D[n][context].keys() if k != "esc" and k not in exclusion_list])
-            D[n][context][symbol] = 1
-            D[n][context]["esc"] += 1
-            out = {"symbol": "esc", "probability": p}
-    else:
-        D[n][context] = {"esc": 1, symbol: 1}
-        out = {"symbol": "esc", "probability": 1.0}
-
-    print("output = ", out)
-    print("exclusion list = ", exclusion_list)
-
-    return out, exclusion_list
 
 
 # METHOD B: esc count = no. distinct symbols in context dict
@@ -84,45 +42,69 @@ def ppm_step_b(symbol, n, context, exclusion_list):
         if symbol in D[n][context].keys():
             if D[n][context][symbol] != 0:
                 sum_values = sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
-                if sum_values == 0:
-                    p = 1.0
-                else:
-                    p = D[n][context][symbol] / sum_values
-                out = {"symbol": symbol, "probability": p}
+                print("context row a =", D[n][context])
+
+                p = D[n][context][symbol] / sum_values
+
+                keys = list(D[n][context].keys())
+                symb_index = keys.index(symbol)
+                cum_prev_f = 0
+                for i in range(symb_index):
+                    key = keys[i]
+                    if key not in exclusion_list:
+                        cum_prev_f += D[n][context][key]
+
+                prev_p = cum_prev_f / sum_values
+                out = {"symbol": symbol, "l_prob": prev_p, "h_prob": prev_p + p}
             else:
                 # if the symbol exists but is zero don't count it as there as count only starts on 2nd observation
                 sum_values = sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
+                print("context row b =", D[n][context])
+
                 if sum_values == 0:
                     p = 1.0
                 else:
                     p = D[n][context]["esc"] / sum_values
 
                 D[n][context]["esc"] += 1
-                out = {"symbol": "esc", "probability": p}
+                out = {"symbol": "esc", "l_prob": 0.0, "h_prob": p}
 
             D[n][context][symbol] += 1
         else:
             sum_values = sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
+            print("context row c =", D[n][context])
+
             if sum_values == 0:
                 p = 1.0
             else:
                 p = D[n][context]["esc"] / sum_values
+
             exclusion_list.extend([k for k in D[n][context].keys() if k != "esc" and k not in exclusion_list])
+
             D[n][context][symbol] = 0
-            out = {"symbol": "esc", "probability": p}
+            out = {"symbol": "esc", "l_prob": 0.0, "h_prob": p}
     else:
         D[n][context] = {"esc": 0, symbol: 0}
-        out = {"symbol": "esc", "probability": 1.0}
+        print("context row d =", D[n][context])
+        out = {"symbol": "esc", "l_prob": 0.0, "h_prob": 1.0}
 
+    if len(exclusion_list) > 0:
+        print("exclusion list = ", exclusion_list)
     print("output = ", out)
-    print("exclusion list = ", exclusion_list)
 
     return out, exclusion_list
 
 
 def order_minus1(symbol, size):
-    out = {"symbol": symbol, "probability": 1/size}
+    out = {"symbol": symbol, "l_prob": 0.0, "h_prob": 1/size}
     return out
+
+
+def init_lh(sequence_length):
+    m = 2 + math.ceil(math.log2(sequence_length))
+    l = '0'*m
+    h = '1'*m
+    return l, h
 
 
 def arithmetic_encoder(ppm_output):
@@ -135,7 +117,7 @@ for i in range(N, len(sequence)):
     excluded = []
     while n > -2:
         context = sequence[i-n:i]
-        print("symbol=", symb, " n=", n, " context=", context)
+        # print("symbol=", symb, " n=", n, " context=", context)
 
         if n > -1:
             output, excluded = ppm_step_b(symb, n, context, excluded)
@@ -151,11 +133,11 @@ for i in range(N, len(sequence)):
             n -= 1
     print()
 
-print("D =")
-for m in range(N+1):
-    print(D[m])
-
-print("\n\nOUTPUTS =")
-for i in range(len(outputs)):
-    print(outputs[i])
+# print("D =")
+# for i in range(N+1):
+#     print(D[i])
+#
+# print("\n\nOUTPUTS =")
+# for i in range(len(outputs)):
+#     print(outputs[i])
 

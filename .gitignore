@@ -1,4 +1,6 @@
 spec.pdf
 encrypt.exe
 testEncoderDecoder.py
+test.txt
+test.lz
 venv/**

@@ -1,32 +1,44 @@
 # Usage: python encoder.py myfile.tex
 # encodes a lossless compression of a LaTeX file
-"""
 import sys
 import os
-
-file_name = sys.argv[1]
-
-name, extension = os.path.splitext(file_name)
-print("File name: ", name)
-print("File extension: ", extension)
-
-if extension != ".txt":
-    print("Not a LaTeX file!")
-    exit()
-
-file = open(file_name, 'r')
-print("File: ", file)
-
-if file.mode == 'r':
-    file_contents = file.read()
-    print("File contents: ", file_contents)
-"""
 import math
 
 
-# METHOD B: esc count = no. distinct symbols in context dict
+def get_file_contents():
+    file_name = sys.argv[1]
+    name, extension = os.path.splitext(file_name)
+    print("File name: ", name)
+
+    # change to .tex in final implementation
+    if extension != ".txt":
+        print("Not a LaTeX file!")
+        exit()
+
+    file = open(file_name, 'r')
+    print("File: ", file)
+
+    if file.mode != 'r':
+        print("Error")
+        exit()
+
+    file_contents = file.read()
+    print("File contents:")
+    print(file_contents)
+
+    return file_contents, name
+
+
+def output_file(encoded_seq, file_name):
+    f = open(file_name + ".lz", "w")
+    encoded_seq = str(encoded_seq)
+    f.write(encoded_seq)
+    f.close()
+
+
+# PPM METHOD B: esc count = no. distinct symbols in context dict
 # & each symbol's count starts from the 2nd observation
-def ppm_step_b(symbol, n, context, exclusion_list):
+def ppm_step(symbol, n, context, exclusion_list):
     if context in D[n].keys():
         if symbol in D[n][context].keys():
             if D[n][context][symbol] != 0:
@@ -139,11 +151,10 @@ def terminate_encoding(l, e3):
         out = msb + e3_bit * e3 + l[1:]
     else:
         out = l
-
     return out
 
 
-sequence = "this is the tithe"
+sequence, file = get_file_contents()
 alphabet_size = 7
 print("Sequence to encode:", sequence, end='\n\n')
 
@@ -151,7 +162,7 @@ N = 4
 sequence = "-" * N + sequence
 D = [{} for i in range(N + 1)]
 outputs = []
-codewords = []
+codeword = ''
 m = 2 + math.ceil(math.log2(len(sequence)))
 low = '0' * m
 high = '1' * m
@@ -169,7 +180,7 @@ for i in range(N, len(sequence)):
         context = sequence[i-n:i]
 
         if n > -1:
-            output, excluded = ppm_step_b(symb, n, context, excluded)
+            output, excluded = ppm_step(symb, n, context, excluded)
         else:  # n == -1
             output = order_minus1(symb, alphabet_size)
 
@@ -183,14 +194,16 @@ for i in range(N, len(sequence)):
 
         if output["symbol"] == symb:
             if code != '':
-                codewords.append(code)
+                codeword += code
             outputs.append(symbol_outputs)
             break
         else:
             n -= 1
-            
+
 terminal_code = terminate_encoding(low, e3_counter)
-codewords.append(terminal_code)
+codeword += terminal_code
+
+output_file(codeword, file)
 
 print("D =")
 for i in range(N+1):
@@ -200,7 +213,6 @@ print("\n\nOUTPUTS =")
 for i in range(len(outputs)):
     print(outputs[i])
 
-print("\n\nENCODING =")
-for i in range(len(codewords)):
-    print(codewords[i])
+print("\n\nSEQUENCE =", sequence[N:])
+print("ENCODING =", codeword)
 

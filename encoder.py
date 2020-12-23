@@ -5,7 +5,7 @@ import os
 import math
 
 
-def get_file_contents():
+def get_file_input():
     file_name = sys.argv[1]
     name, extension = os.path.splitext(file_name)
     print("File name: ", name)
@@ -15,14 +15,14 @@ def get_file_contents():
         print("Not a LaTeX file!")
         exit()
 
-    file = open(file_name, 'r')
-    print("File: ", file)
+    f = open(file_name, 'r')
+    print("File: ", f)
 
-    if file.mode != 'r':
+    if f.mode != 'r':
         print("Error")
         exit()
 
-    file_contents = file.read()
+    file_contents = f.read()
     print("File contents:")
     print(file_contents)
 
@@ -88,7 +88,17 @@ def ppm_step(symbol, n, context, exclusion_list):
 
 
 def order_minus1(symbol, size):
-    out = {"symbol": symbol, "l_prob": 0.0, "h_prob": 1/size}
+
+    if symbol in initial_dist:
+        index = initial_dist.index(symbol)
+    else:
+        index = len(initial_dist)
+        initial_dist.append(symbol)
+
+    p = index * (1 / size)
+    prev_p = (index - 1) * (1 / size)
+    out = {"symbol": symbol, "l_prob": prev_p, "h_prob": p}
+
     return out
 
 
@@ -154,13 +164,14 @@ def terminate_encoding(l, e3):
     return out
 
 
-sequence, file = get_file_contents()
+sequence, file = get_file_input()
 alphabet_size = 7
 print("Sequence to encode:", sequence, end='\n\n')
 
 N = 4
 sequence = "-" * N + sequence
 D = [{} for i in range(N + 1)]
+initial_dist = []
 outputs = []
 codeword = ''
 m = 2 + math.ceil(math.log2(len(sequence)))
@@ -202,8 +213,9 @@ for i in range(N, len(sequence)):
 
 terminal_code = terminate_encoding(low, e3_counter)
 codeword += terminal_code
+output = format(m, '08b') + codeword
 
-output_file(codeword, file)
+output_file(output, file)
 
 print("D =")
 for i in range(N+1):
@@ -214,5 +226,4 @@ for i in range(len(outputs)):
     print(outputs[i])
 
 print("\n\nSEQUENCE =", sequence[N:])
-print("ENCODING =", codeword)
-
+print("ENCODING =", output)

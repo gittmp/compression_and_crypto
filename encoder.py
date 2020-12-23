@@ -23,8 +23,6 @@ def get_file_input():
         exit()
 
     file_contents = f.read()
-    print("File contents:")
-    print(file_contents)
 
     return file_contents, name
 
@@ -90,9 +88,9 @@ def ppm_step(symbol, n, context, exclusion_list):
 def order_minus1(symbol, size):
 
     if symbol in initial_dist:
-        index = initial_dist.index(symbol)
+        index = max(1.0, initial_dist.index(symbol))
     else:
-        index = len(initial_dist)
+        index = max(1.0, len(initial_dist))
         initial_dist.append(symbol)
 
     p = index * (1 / size)
@@ -114,14 +112,10 @@ def arithmetic_encoder(l_old, h_old, e3_count, m, ppm_output):
     l_new = l_old + math.floor((h_old - l_old + 1) * l_prob)
     h_new = l_old + math.floor((h_old - l_old + 1) * h_prob) - 1
 
-    # print("new l,h ints calculated:", l_new, h_new)
-
     l_new = format(l_new, 'b')
     l = l_new + '0' * (m - len(l_new))
     h_new = format(h_new, 'b')
     h = h_new + '1' * (m - len(h_new))
-
-    # print("new l,h values calculated:", l, h)
 
     e1e2_condition = (l[0] == h[0])
     e3_condition = (l[0] != h[0] and l[1] == '1' and h[1] == '0')
@@ -134,18 +128,15 @@ def arithmetic_encoder(l_old, h_old, e3_count, m, ppm_output):
 
             l = l[1:] + '0'
             h = h[1:] + '1'
-            # print("MSBs are both", l[0], " --> shifting out bits:", l, h)
 
         elif e3_condition:
             l = '0' + l[2:] + '0'
             h = '1' + h[2:] + '1'
             e3_count += 1
-            # print("e3 condition met --> incrementing counter:", e3_count)
 
         e1e2_condition = (l[0] == h[0])
         e3_condition = ((l[0] != h[0]) and l[1] == '1' and h[1] == '0')
 
-    # return l, h, e3_count, out
     return {
         "l": l,
         "h": h,
@@ -195,7 +186,7 @@ for i in range(N, len(sequence)):
         else:  # n == -1
             output = order_minus1(symb, alphabet_size)
 
-        symbol_outputs.append(output)
+        symbol_outputs.append((n, output))
 
         encoding = arithmetic_encoder(low, high, e3_counter, m, output)
         low = encoding["l"]

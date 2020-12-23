@@ -26,10 +26,12 @@ def get_file_input():
     print("File contents:")
     print(file_contents)
 
-    m = int(file_contents[:8], 'b')
-    tag = file_contents[8:]
+    index = file_contents.index(']')
+    distribution = list(file_contents[:index + 1])
+    m = int(file_contents[index + 1:index + 9], 2)
+    tag = file_contents[index + 9:]
 
-    return name, m, tag
+    return name, distribution, m, tag
 
 
 # PPM METHOD B: esc count = no. distinct symbols in context dict
@@ -86,9 +88,9 @@ def ppm_step(symbol, n, context, exclusion_list):
 def order_minus1(symbol, size):
 
     if symbol in initial_dist:
-        index = initial_dist.index(symbol)
+        index = max(1.0, initial_dist.index(symbol))
     else:
-        index = len(initial_dist)
+        index = max(1.0, len(initial_dist))
         initial_dist.append(symbol)
 
     p = index * (1 / size)
@@ -98,22 +100,23 @@ def order_minus1(symbol, size):
     return out
 
 
-def init_decode_symbol(tg, l, h, size):
-    tg = int(t, 'b')
-    l = int(l, 'b')
-    h = int(h, 'b')
+def init_decode_symbol(tg, l, h, m, size):
+    tg = int(t, 2)
+    l = int(l, 2)
+    h = int(h, 2)
 
     freq_val = math.floor(((tg - l + 1) * size - 1) / (h - l + 1))
 
 
-file, m, tag = get_file_input()
+file, initial_dist, m, tag = get_file_input()
 t = tag[:m]
 alphabet_size = 7
+print("order -1 distribution:", initial_dist)
+print("m:", m)
 print("Sequence to decode:", tag, end='\n\n')
 
 N = 4
 D = [{} for i in range(N + 1)]
-initial_dist = []
 outputs = []
 low = '0' * m
 high = '1' * m

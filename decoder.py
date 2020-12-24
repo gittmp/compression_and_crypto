@@ -102,24 +102,73 @@ def order_minus1(symbol, size):
     return out
 
 
-def decode_symbol(tg, l, h, m, size):
-    tg = int(t, 2)
-    l = int(l, 2)
-    h = int(h, 2)
+def arithmetic_decoder(m, t_bin, it, l_bin, h_bin, l_prob, h_prob):
+    l_old = int(l_bin, 2)
+    h_old = int(h_bin, 2)
 
-    freq_val = math.floor(((tg - l + 1) * size - 1) / (h - l + 1))
+    l_new = l_old + math.floor((h_old - l_old + 1) * l_prob)
+    h_new = l_old + math.floor((h_old - l_old + 1) * h_prob) - 1
 
-    # n = N
-    # while n > -2:
-    #
-    #     if n > -1:
-    #         # search D in contexts n -> 0
-    #     else:  # n == -1
-    #         # if not found, search initial_dist
+    l_new = format(l_new, 'b')
+    l = l_new + '0' * (m - len(l_new))
+    h_new = format(h_new, 'b')
+    h = h_new + '1' * (m - len(h_new))
+
+    e1e2_condition = (l[0] == h[0])
+    e3_condition = (l[0] != h[0] and l[1] == '1' and h[1] == '0')
+
+    while (e1e2_condition or e3_condition) is True:
+        if e1e2_condition:
+            l = l[1:] + '0'
+            h = h[1:] + '1'
+            t_bin = t_bin[1:] + it[0]
+            it = it[1:]
+
+        elif e3_condition:
+            l = '0' + l[2:] + '0'
+            h = '1' + h[2:] + '1'
+
+            t_bin = t_bin[1:] + it[0]
+            it = it[1:]
+            t_bin[0] = '0' if it[0] == '1' else '1'
+
+        e1e2_condition = (l[0] == h[0])
+        e3_condition = ((l[0] != h[0]) and l[1] == '1' and h[1] == '0')
+
+    return l, h, t_bin, it
+
+
+def init_decoding(t_bin, input_tag, l_bin, h_bin, m, size):
+    initial_symbols = []
+
+    for i in range(N):
+        tg = int(t_bin, 2)
+        l = int(l_bin, 2)
+        h = int(h_bin, 2)
+        symbol = None
+
+        freq_val = math.floor(((tg - l + 1) * size - 1) / (h - l + 1))
+        p = freq_val / size
+        low_bound = 0
+        for j in range(1, len(initial_dist)):
+            prev_index = j - 1
+            index = j
+            low_bound += prev_index * (1 / size)
+            high_bound = index * (1 / size)
+
+            if low_bound <= p < high_bound:
+                symbol = initial_dist[j]
+                l, h, t_bin, input_tag = arithmetic_decoder(m, t_bin, input_tag, l_bin, h_bin, low_bound, high_bound)
+                break
+
+        initial_symbols.append(symbol)
+
+    return initial_symbols, l_bin, h_bin, t_bin, input_tag
 
 
 file, initial_dist, m, tag = get_file_input()
 t = tag[:m]
+tag = tag[m:]
 alphabet_size = 7
 print("order -1 distribution:", initial_dist)
 print("m:", m)

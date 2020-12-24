@@ -204,7 +204,7 @@ for i in range(N, len(sequence)):
 
 terminal_code = terminate_encoding(low, e3_counter)
 codeword += terminal_code
-output = format(m, '08b') + codeword
+output = str(initial_dist) + format(m, '08b') + codeword
 
 output_file(output, file)
 

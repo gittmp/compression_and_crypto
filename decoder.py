@@ -3,6 +3,7 @@
 import os
 import sys
 import math
+import ast
 
 
 def get_file_input():
@@ -27,7 +28,8 @@ def get_file_input():
     print(file_contents)
 
     index = file_contents.index(']')
-    distribution = list(file_contents[:index + 1])
+    distribution = file_contents[:index + 1]
+    distribution = ast.literal_eval(distribution)
     m = int(file_contents[index + 1:index + 9], 2)
     tag = file_contents[index + 9:]
 
@@ -100,12 +102,20 @@ def order_minus1(symbol, size):
     return out
 
 
-def init_decode_symbol(tg, l, h, m, size):
+def decode_symbol(tg, l, h, m, size):
     tg = int(t, 2)
     l = int(l, 2)
     h = int(h, 2)
 
     freq_val = math.floor(((tg - l + 1) * size - 1) / (h - l + 1))
+
+    # n = N
+    # while n > -2:
+    #
+    #     if n > -1:
+    #         # search D in contexts n -> 0
+    #     else:  # n == -1
+    #         # if not found, search initial_dist
 
 
 file, initial_dist, m, tag = get_file_input()

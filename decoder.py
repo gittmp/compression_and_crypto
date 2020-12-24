@@ -16,16 +16,12 @@ def get_file_input():
         exit()
 
     file = open(file_name, 'r')
-    print("File: ", file)
 
     if file.mode != 'r':
         print("Error")
         exit()
 
     file_contents = file.read()
-    print("File contents:")
-    print(file_contents)
-
     m = int(file_contents[:8], 2)
     tag = file_contents[8:]
 
@@ -131,7 +127,7 @@ def arithmetic_decoder(m, t_bin, it, l_bin, h_bin, l_prob, h_prob):
     return l, h, t_bin, it
 
 
-def init_decoding(t_bin, input_tag, l_bin, h_bin, m):
+def ppm_decoding(t_bin, input_tag, l_bin, h_bin, m):
     initial_symbols = []
 
     for i in range(N):
@@ -139,23 +135,23 @@ def init_decoding(t_bin, input_tag, l_bin, h_bin, m):
         l = int(l_bin, 2)
         h = int(h_bin, 2)
         symbol = None
+        low_bound = 0
+        high_bound = 1
 
+        # here calculating p is what needs to utilise ppm
         freq_val = math.floor(((tg - l + 1) * 128 - 1) / (h - l + 1))
         p = freq_val / 128
-        print("\nSearch: freq = {}, p = {}".format(freq_val, p))
 
         for j in range(128):
             low_bound = j * (1 / 128)
             high_bound = (j + 1) * (1 / 128)
-            print("Interval: {} -> {}".format(low_bound, high_bound))
 
             if low_bound <= p < high_bound:
                 symbol = chr(j)
-                print("Found:", symbol)
-                l, h, t_bin, input_tag = arithmetic_decoder(m, t_bin, input_tag, l_bin, h_bin, low_bound, high_bound)
                 break
 
         initial_symbols.append(symbol)
+        l, h, t_bin, input_tag = arithmetic_decoder(m, t_bin, input_tag, l_bin, h_bin, low_bound, high_bound)
 
     return initial_symbols, l_bin, h_bin, t_bin, input_tag
 
@@ -172,7 +168,7 @@ outputs = []
 low = '0' * m
 high = '1' * m
 
-sequence, low, high, t, tag = init_decoding(t, tag, low, high, m)
+sequence, low, high, t, tag = ppm_decoding(t, tag, low, high, m)
 
 print("Start of sequence = ", sequence)
 print("Low = {}, High = {}, Current tag = {}".format(low, high, t))

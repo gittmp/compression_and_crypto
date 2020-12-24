@@ -3,7 +3,6 @@
 import os
 import sys
 import math
-import ast
 
 
 def get_file_input():
@@ -27,13 +26,10 @@ def get_file_input():
     print("File contents:")
     print(file_contents)
 
-    index = file_contents.index(']')
-    distribution = file_contents[:index + 1]
-    distribution = ast.literal_eval(distribution)
-    m = int(file_contents[index + 1:index + 9], 2)
-    tag = file_contents[index + 9:]
+    m = int(file_contents[:8], 2)
+    tag = file_contents[8:]
 
-    return name, distribution, m, tag
+    return name, m, tag
 
 
 # PPM METHOD B: esc count = no. distinct symbols in context dict
@@ -87,16 +83,12 @@ def ppm_step(symbol, n, context, exclusion_list):
     return out, exclusion_list
 
 
-def order_minus1(symbol, size):
+def order_minus1(symbol):
 
-    if symbol in initial_dist:
-        index = max(1.0, initial_dist.index(symbol))
-    else:
-        index = max(1.0, len(initial_dist))
-        initial_dist.append(symbol)
+    char_code = ord(symbol)
+    prev_p = char_code * (1 / 128)
+    p = (char_code + 1) * (1 / 128)
 
-    p = index * (1 / size)
-    prev_p = (index - 1) * (1 / size)
     out = {"symbol": symbol, "l_prob": prev_p, "h_prob": p}
 
     return out
@@ -130,7 +122,8 @@ def arithmetic_decoder(m, t_bin, it, l_bin, h_bin, l_prob, h_prob):
 
             t_bin = t_bin[1:] + it[0]
             it = it[1:]
-            t_bin[0] = '0' if it[0] == '1' else '1'
+            complement = '0' if t_bin[0] == '1' else '1'
+            t_bin = complement + t_bin[1:]
 
         e1e2_condition = (l[0] == h[0])
         e3_condition = ((l[0] != h[0]) and l[1] == '1' and h[1] == '0')
@@ -138,7 +131,7 @@ def arithmetic_decoder(m, t_bin, it, l_bin, h_bin, l_prob, h_prob):
     return l, h, t_bin, it
 
 
-def init_decoding(t_bin, input_tag, l_bin, h_bin, m, size):
+def init_decoding(t_bin, input_tag, l_bin, h_bin, m):
     initial_symbols = []
 
     for i in range(N):
@@ -147,17 +140,18 @@ def init_decoding(t_bin, input_tag, l_bin, h_bin, m, size):
         h = int(h_bin, 2)
         symbol = None
 
-        freq_val = math.floor(((tg - l + 1) * size - 1) / (h - l + 1))
-        p = freq_val / size
-        low_bound = 0
-        for j in range(1, len(initial_dist)):
-            prev_index = j - 1
-            index = j
-            low_bound += prev_index * (1 / size)
-            high_bound = index * (1 / size)
+        freq_val = math.floor(((tg - l + 1) * 128 - 1) / (h - l + 1))
+        p = freq_val / 128
+        print("\nSearch: freq = {}, p = {}".format(freq_val, p))
+
+        for j in range(128):
+            low_bound = j * (1 / 128)
+            high_bound = (j + 1) * (1 / 128)
+            print("Interval: {} -> {}".format(low_bound, high_bound))
 
             if low_bound <= p < high_bound:
-                symbol = initial_dist[j]
+                symbol = chr(j)
+                print("Found:", symbol)
                 l, h, t_bin, input_tag = arithmetic_decoder(m, t_bin, input_tag, l_bin, h_bin, low_bound, high_bound)
                 break
 
@@ -166,11 +160,9 @@ def init_decoding(t_bin, input_tag, l_bin, h_bin, m, size):
     return initial_symbols, l_bin, h_bin, t_bin, input_tag
 
 
-file, initial_dist, m, tag = get_file_input()
+file, m, tag = get_file_input()
 t = tag[:m]
 tag = tag[m:]
-alphabet_size = 7
-print("order -1 distribution:", initial_dist)
 print("m:", m)
 print("Sequence to decode:", tag, end='\n\n')
 
@@ -179,6 +171,8 @@ D = [{} for i in range(N + 1)]
 outputs = []
 low = '0' * m
 high = '1' * m
-e3_counter = 0
 
+sequence, low, high, t, tag = init_decoding(t, tag, low, high, m)
 
+print("Start of sequence = ", sequence)
+print("Low = {}, High = {}, Current tag = {}".format(low, high, t))

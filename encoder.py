@@ -85,16 +85,12 @@ def ppm_step(symbol, n, context, exclusion_list):
     return out, exclusion_list
 
 
-def order_minus1(symbol, size):
+def order_minus1(symbol):
 
-    if symbol in initial_dist:
-        index = max(1.0, initial_dist.index(symbol))
-    else:
-        index = max(1.0, len(initial_dist))
-        initial_dist.append(symbol)
+    char_code = ord(symbol)
+    prev_p = char_code * (1 / 128)
+    p = (char_code + 1) * (1 / 128)
 
-    p = index * (1 / size)
-    prev_p = (index - 1) * (1 / size)
     out = {"symbol": symbol, "l_prob": prev_p, "h_prob": p}
 
     return out
@@ -156,13 +152,11 @@ def terminate_encoding(l, e3):
 
 
 sequence, file = get_file_input()
-alphabet_size = 7
 print("Sequence to encode:", sequence, end='\n\n')
 
 N = 4
 sequence = "-" * N + sequence
 D = [{} for i in range(N + 1)]
-initial_dist = []
 outputs = []
 codeword = ''
 m = 2 + math.ceil(math.log2(len(sequence)))
@@ -184,7 +178,7 @@ for i in range(N, len(sequence)):
         if n > -1:
             output, excluded = ppm_step(symb, n, context, excluded)
         else:  # n == -1
-            output = order_minus1(symb, alphabet_size)
+            output = order_minus1(symb)
 
         symbol_outputs.append((n, output))
 
@@ -204,7 +198,7 @@ for i in range(N, len(sequence)):
 
 terminal_code = terminate_encoding(low, e3_counter)
 codeword += terminal_code
-output = str(initial_dist) + format(m, '08b') + codeword
+output = format(m, '08b') + codeword
 
 output_file(output, file)
 

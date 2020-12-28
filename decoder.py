@@ -90,7 +90,7 @@ def order_minus1(symbol):
     return out
 
 
-def arithmetic_decoder(m, t_bin, it, l_bin, h_bin, l_prob, h_prob):
+def update_lh(m, t_bin, it, l_bin, h_bin, l_prob, h_prob):
     l_old = int(l_bin, 2)
     h_old = int(h_bin, 2)
 
@@ -139,9 +139,16 @@ def ppm_decoding(t_bin, input_tag, l_bin, h_bin, m):
         high_bound = 1
 
         # here calculating p is what needs to utilise ppm
+        # the 128 comes from the order -1 distribution, i.e. all 128 symbols, but may need to adapt to which order
         freq_val = math.floor(((tg - l + 1) * 128 - 1) / (h - l + 1))
-        p = freq_val / 128
 
+        p = freq_val / 128
+        print("p = {}".format(p))
+
+        # p2 = (tg - l) / (h - l)
+        # print("p2 = {}".format(p2))
+
+        # this is where you check what interval correlated to p (in order -1)
         for j in range(128):
             low_bound = j * (1 / 128)
             high_bound = (j + 1) * (1 / 128)
@@ -151,9 +158,86 @@ def ppm_decoding(t_bin, input_tag, l_bin, h_bin, m):
                 break
 
         initial_symbols.append(symbol)
-        l, h, t_bin, input_tag = arithmetic_decoder(m, t_bin, input_tag, l_bin, h_bin, low_bound, high_bound)
+
+        # update low and high bounds
+        l, h, t_bin, input_tag = update_lh(m, t_bin, input_tag, l_bin, h_bin, low_bound, high_bound)
+        print("l = {}, h = {}".format(l, h))
 
     return initial_symbols, l_bin, h_bin, t_bin, input_tag
+
+
+def backtrack_update(i, decoded_sequence, n, symbol):
+    while n <= N:
+        # find nth order context
+        context = decoded_sequence[i - n:]
+
+        # update count of context-symbol in D
+        if context in D[n].keys():
+            if symbol in D[n][context].keys():
+                if D[n][context][symbol] == 0:
+                    # if the symbol exists but is zero increment esc count (method B) as well as symbol count
+                    D[n][context]["esc"] += 1
+                D[n][context][symbol] += 1
+            else:
+                D[n][context][symbol] = 0
+        else:
+            D[n][context] = {"esc": 0, symbol: 0}
+
+        # increment n
+        n += 1
+
+
+def symbol_search(context, n, tg, init_tag, l, h, exclusion_list, i, decoded_sequence):
+    # search order n for context
+    if context in D[n].keys():
+        # if context found, check if there are any non-zero counts
+        sum_values = sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
+        if sum_values > 0:
+            # calculate freq_val then p based upon counts in this section
+            freq_val = math.floor(((tg - l + 1) * sum_values - 1) / (h - l + 1))
+            p = freq_val / sum_values
+
+            # find symbol corresponding to the interval p falls within
+            keys = D[n][context].keys()
+            low_bound = 0
+            high_bound = 0
+            symbol = "esc"
+            for key in keys:
+                if key not in exclusion_list:
+                    high_bound += D[n][context][keys] / sum_values
+                    if low_bound <= p < high_bound:
+                        symbol = key
+                        print("found symbol =", symbol)
+                        break
+                    else:
+                        low_bound = high_bound
+
+            # if found symbol is the escape symbol, update l and h and decrement n
+            if symbol == "esc":
+                new_lht = update_lh(m, tg, init_tag, l, h, l_prob=low_bound, h_prob=high_bound)
+                n -= 1
+                exclusion_list.extend([k for k in keys if k != "esc"])
+                out = {'n': n, "lht_update": new_lht, "found": False, "symbol": "esc"}
+            # otherwise we've found the symbol
+            else:
+                # output symbol, update l and h and backtrack through orders n -> N updating context-symbol counts
+                new_lht = update_lh(m, tg, init_tag, l, h, l_prob=low_bound, h_prob=high_bound)
+                backtrack_update(i, decoded_sequence, n, symbol)
+                out = {'n': n, "lht_update": new_lht, "found": True, "symbol": symbol}
+        # otherwise, if no non-zero elements corresponding to context
+        else:
+            # update l and h and decrement n
+            new_lht = update_lh(m, tg, init_tag, l, h, l_prob=0.0, h_prob=1.0)
+            n -= 1
+            out = {'n': n, "lht_update": new_lht, "found": False, "symbol": "esc"}
+    # otherwise, if context not in D
+    else:
+        # update l and h and decrement n
+        new_lht = update_lh(m, tg, init_tag, l, h, l_prob=0.0, h_prob=1.0)
+        n -= 1
+        out = {'n': n, "lht_update": new_lht, "found": False, "symbol": "esc"}
+
+    return out
 
 
 file, m, tag = get_file_input()

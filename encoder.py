@@ -185,6 +185,7 @@ for i in range(N, len(sequence)):
         encoding = arithmetic_encoder(low, high, e3_counter, m, output)
         low = encoding["l"]
         high = encoding["h"]
+        print("Low = {}, High = {}".format(low, high))
         e3_counter = encoding["e3"]
         code += encoding["output"]
 

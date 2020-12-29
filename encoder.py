@@ -109,7 +109,7 @@ def order_minus1(symbol):
     prev_p = char_code * (1 / 128)
     p = (char_code + 1) * (1 / 128)
 
-    print("9) order -1 context: p interval = [{}, {}), code = {}".format(prev_p, p, char_code))
+    print("9) order -1 context: p interval = [{}, {}), symbol = {}".format(prev_p, p, symbol))
 
     out = {"symbol": symbol, "l_prob": prev_p, "h_prob": p}
 

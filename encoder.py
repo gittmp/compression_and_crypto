@@ -63,8 +63,8 @@ def ppm_step(symbol, n, context, exclusion_list):
                 # if symbol not in keys (or symbol prob 0), encode esc symbol
                 exclusion_list.extend([k for k in keys if not (k == "esc" or k in exclusion_list or D[n][context][k] == 0)])
 
-                prev_prob = 0
-                next_prob = D[n][context]["esc"] * p
+                next_prob = 1
+                prev_prob = 1 - (D[n][context]["esc"] * p)
 
                 if symbol in keys:
                     # if symbol in keys, increment it and esc as count must be zero
@@ -74,7 +74,9 @@ def ppm_step(symbol, n, context, exclusion_list):
                 else:
                     # if symbol not in keys, add it
                     print("5) symbol not in context, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_prob, next_prob))
+                    esc_count = D[n][context].pop("esc", 0)
                     D[n][context][symbol] = 0
+                    D[n][context]["esc"] = esc_count
 
                 out = {"symbol": "esc", "l_prob": prev_prob, "h_prob": next_prob}
         else:
@@ -87,13 +89,15 @@ def ppm_step(symbol, n, context, exclusion_list):
             else:
                 print("7) all symbols zero, symbol never observed, escape: symbol = 'esc', low prob = 0, high prob = 1")
                 # if symbol not in keys, add it
+                esc_count = D[n][context].pop("esc", 0)
                 D[n][context][symbol] = 0
+                D[n][context]["esc"] = esc_count
 
             out = {"symbol": "esc", "l_prob": 0.0, "h_prob": 1.0}
     else:
         # if context not in D, add it and output esc
         print("8) context never observed, escape: symbol = 'esc', low prob = 0, high prob = 1")
-        D[n][context] = {"esc": 0, symbol: 0}
+        D[n][context] = {symbol: 0, "esc": 0}
         out = {"symbol": "esc", "l_prob": 0.0, "h_prob": 1.0}
 
     return out, exclusion_list

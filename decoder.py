@@ -121,9 +121,11 @@ def backtrack_update(i, decoded_sequence, n, symb):
                     D[n][c]["esc"] += 1
                 D[n][c][symb] += 1
             else:
+                esc_count = D[n][c].pop("esc", 0)
                 D[n][c][symb] = 0
+                D[n][c]["esc"] = esc_count
         else:
-            D[n][c] = {"esc": 0, symb: 0}
+            D[n][c] = {symb: 0, "esc": 0}
 
         # increment n
         n += 1
@@ -162,8 +164,7 @@ def symbol_search(c, n, tg_bin, init_tag, i, l_bin, h_bin, exclusion_list, decod
             for key in keys:
                 low_bound = high_bound
                 high_bound += D[n][c][key] / sum_values
-                print("key = {}, interval = [{}, {})".format(key, low_bound, high_bound))
-                if low_bound <= p <= high_bound:
+                if low_bound <= p < high_bound:
                     symb = key
                     break
 

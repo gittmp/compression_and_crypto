@@ -140,11 +140,15 @@ def arithmetic_encoder(l_old, h_old, e3_count, m, ppm_output):
 
     print("binary versions: l = {}, h = {}".format(l, h))
 
-    e1e2_condition = (l[0] == h[0])
-    e3_condition = (l[0] != h[0] and l[1] == '1' and h[1] == '0')
+    while ((l[0] == h[0]) or (l[1] == '1' and h[1] == '0')) is True:
+        if l[1] == '1' and h[1] == '0':
+            print("e3 condition")
 
-    while (e1e2_condition or e3_condition) is True:
-        if e1e2_condition:
+            l = '0' + l[2:] + '0'
+            h = '1' + h[2:] + '1'
+            e3_count += 1
+
+        if l[0] == h[0]:
             print("e1/e2 condition")
 
             e3_bit = '0' if l[0] == '1' else '1'
@@ -153,16 +157,6 @@ def arithmetic_encoder(l_old, h_old, e3_count, m, ppm_output):
 
             l = l[1:] + '0'
             h = h[1:] + '1'
-
-        elif e3_condition:
-            print("e3 condition")
-
-            l = '0' + l[2:] + '0'
-            h = '1' + h[2:] + '1'
-            e3_count += 1
-
-        e1e2_condition = (l[0] == h[0])
-        e3_condition = ((l[0] != h[0]) and l[1] == '1' and h[1] == '0')
 
     print("Final updated binary values: l = {}, h = {}, output = {}".format(l, h, out), end='\n\n')
 

@@ -42,20 +42,10 @@ def update_lh(m, t_bin, rem_tag, l_bin, h_bin, l_prob, h_prob):
     h_new = format(h_new, 'b')
     h = h_new + '1' * (m - len(h_new))
 
-    print("binary versions: l = {}, h = {}".format(l, h))
+    print("binary versions: l = {}, h = {}".format(l_new, h_new))
 
-    e1e2_condition = (l[0] == h[0])
-    e3_condition = (l[0] != h[0] and l[1] == '1' and h[1] == '0')
-
-    while (e1e2_condition or e3_condition) is True:
-        if e1e2_condition:
-            print("e1/e2 condition")
-            l = l[1:] + '0'
-            h = h[1:] + '1'
-            t_bin = t_bin[1:] + rem_tag[0]
-            rem_tag = rem_tag[1:]
-
-        elif e3_condition:
+    while ((l[0] == h[0]) or (l[1] == '1' and h[1] == '0')) is True:
+        if l[1] == '1' and h[1] == '0':
             print("e3 condition")
             l = '0' + l[2:] + '0'
             h = '1' + h[2:] + '1'
@@ -65,8 +55,12 @@ def update_lh(m, t_bin, rem_tag, l_bin, h_bin, l_prob, h_prob):
             complement = '0' if t_bin[0] == '1' else '1'
             t_bin = complement + t_bin[1:]
 
-        e1e2_condition = (l[0] == h[0])
-        e3_condition = ((l[0] != h[0]) and (l[1] == '1' and h[1] == '0'))
+        if l[0] == h[0]:
+            print("e1/e2 condition")
+            l = l[1:] + '0'
+            h = h[1:] + '1'
+            t_bin = t_bin[1:] + rem_tag[0]
+            rem_tag = rem_tag[1:]
 
     print("Final updated binary values: l = {}, h = {}, tag = {}".format(l, h, t_bin), end='\n\n')
     return l, h, t_bin, rem_tag
@@ -154,7 +148,9 @@ def symbol_search(c, n, tg_bin, init_tag, i, l_bin, h_bin, exclusion_list, decod
 
             freq_val = math.floor(((tg - l + 1) * sum_values - 1) / (h - l + 1))
             p = freq_val / sum_values
-            print("freq_val = {}, p = {}".format(freq_val, p))
+            prob = (tg - l) / (h - l)
+            p = prob
+            print("freq_val = {}, p = {}, PROB = {}".format(freq_val, p, prob))
 
             # find symbol corresponding to the interval p falls within
             keys = D[n][c].keys()
@@ -216,7 +212,7 @@ sequence = "----"
 tag_length = len(remaining_tag)
 
 # while tag_length > 0:
-for count in range(N, 11):
+for count in range(N, 12):
     # print("\n\nCOUNT={}\n".format(count))
     output = None
     order = N

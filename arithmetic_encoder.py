@@ -1,4 +1,3 @@
-# Arithmetic encoder which encodes each symbol of inputted text file with equal probability 1/128
 import sys
 import os
 import math

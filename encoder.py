@@ -44,41 +44,44 @@ def ppm_step(symbol, n, context, exclusion_list):
         # if there are non-zero values in the context, use them to encode symbol or esc
         keys = D[n][context].keys()
         if sum_values > 0:
-            p = 1 / sum_values
-            print("2) non-zero context values found: sum_values = {}, singular p = {}".format(sum_values, p))
+            print("2) non-zero context values found: sum_values = {}".format(sum_values))
 
             if symbol in keys and D[n][context][symbol] != 0:
-                prev_prob, next_prob = 0, 0
+
+                prev_cum_prob, cum_prob = 0, 0
                 for key in keys:
-                    prev_prob = next_prob
-                    next_prob += D[n][context][key] * p
+                    prev_cum_prob = cum_prob
+                    cum_prob += D[n][context][key]
                     if key == symbol:
                         break
 
-                print("3) symbol found and non-zero, encode it: symbol = {}, low prob = {}, high prob = {}".format(symbol, prev_prob, next_prob))
+                prev_cum_prob = prev_cum_prob / sum_values
+                cum_prob = cum_prob / sum_values
+
+                print("3) symbol found and non-zero, encode it: symbol = {}, low prob = {}, high prob = {}".format(symbol, prev_cum_prob, cum_prob))
 
                 D[n][context][symbol] += 1
-                out = {"symbol": symbol, "l_prob": prev_prob, "h_prob": next_prob}
+                out = {"symbol": symbol, "l_prob": prev_cum_prob, "h_prob": cum_prob}
             else:
                 # if symbol not in keys (or symbol prob 0), encode esc symbol
                 exclusion_list.extend([k for k in keys if not (k == "esc" or k in exclusion_list or D[n][context][k] == 0)])
 
-                next_prob = 1
-                prev_prob = 1 - (D[n][context]["esc"] * p)
+                prev_cum_prob = 1 - (D[n][context]["esc"] / sum_values)
+                cum_prob = 1
 
                 if symbol in keys:
-                    # if symbol in keys, increment it and esc as count must be zero
-                    print("4) symbol count is zero, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_prob, next_prob))
+                    # if symbol in keys, increment it and esc (as count must be zero)
+                    print("4) symbol count is zero, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_cum_prob, cum_prob))
                     D[n][context][symbol] += 1
                     D[n][context]["esc"] += 1
                 else:
                     # if symbol not in keys, add it
-                    print("5) symbol not in context, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_prob, next_prob))
+                    print("5) symbol not in context, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_cum_prob, cum_prob))
                     esc_count = D[n][context].pop("esc", 0)
                     D[n][context][symbol] = 0
                     D[n][context]["esc"] = esc_count
 
-                out = {"symbol": "esc", "l_prob": prev_prob, "h_prob": next_prob}
+                out = {"symbol": "esc", "l_prob": prev_cum_prob, "h_prob": cum_prob}
         else:
             # if all values in context section are zero, encode esc with probability interval 0 - 1
             if symbol in keys:
@@ -106,8 +109,8 @@ def ppm_step(symbol, n, context, exclusion_list):
 def order_minus1(symbol):
 
     char_code = ord(symbol)
-    prev_p = char_code * (1 / 128)
-    p = (char_code + 1) * (1 / 128)
+    prev_p = char_code / 128
+    p = (char_code + 1) / 128
 
     print("9) order -1 context: p interval = [{}, {}), symbol = {}".format(prev_p, p, symbol))
 
@@ -116,40 +119,37 @@ def order_minus1(symbol):
     return out
 
 
-def arithmetic_encoder(l_old, h_old, e3_count, m, ppm_output):
+def arithmetic_encoder(l_old_bin, h_old_bin, e3_count, m, ppm_output):
     symbol = ppm_output["symbol"]
     l_prob = ppm_output["l_prob"]
     h_prob = ppm_output["h_prob"]
     out = ''
 
-    l_old = int(l_old, 2)
-    h_old = int(h_old, 2)
+    l_old = int(l_old_bin, 2)
+    h_old = int(h_old_bin, 2)
 
-    print("low prob = {}, high prob = {}".format(l_prob, h_prob))
+    print(" a. inputs: low = {} -> {}, high = {} -> {}, e3 count = {}, low prob = {}, high_prob = {}".format(l_old_bin, l_old, h_old_bin, h_old, e3_count, l_prob, h_prob))
 
-    l_new = l_old + math.floor((h_old - l_old + 1) * l_prob)
-    h_new = l_old + math.floor((h_old - l_old + 1) * h_prob) - 1
+    l_new_bin = l_old + math.floor((h_old - l_old + 1) * l_prob)
+    h_new_bin = l_old + math.floor((h_old - l_old + 1) * h_prob) - 1
 
-    print("int l_old -> l_new: {} -> {}".format(l_old, l_new))
-    print("int h_old -> h_new: {} -> {}".format(h_old, h_new))
-
-    l_new = format(l_new, 'b')
+    l_new = format(l_new_bin, 'b')
     l = l_new + '0' * (m - len(l_new))
-    h_new = format(h_new, 'b')
+    h_new = format(h_new_bin, 'b')
     h = h_new + '1' * (m - len(h_new))
 
-    print("binary versions: l = {}, h = {}".format(l, h))
+    print(" b. new low and high: low = {} -> {} -> {}, high = {} -> {} -> {}".format(l_new_bin, l_new, l, h_new_bin, h_new, h))
 
     while ((l[0] == h[0]) or (l[1] == '1' and h[1] == '0')) is True:
         if l[1] == '1' and h[1] == '0':
-            print("e3 condition")
+            print(" e3 condition")
 
             l = '0' + l[2:] + '0'
             h = '1' + h[2:] + '1'
             e3_count += 1
 
         if l[0] == h[0]:
-            print("e1/e2 condition")
+            print(" e1/e2 condition")
 
             e3_bit = '0' if l[0] == '1' else '1'
             out += l[0] + e3_bit * e3_count
@@ -158,7 +158,7 @@ def arithmetic_encoder(l_old, h_old, e3_count, m, ppm_output):
             l = l[1:] + '0'
             h = h[1:] + '1'
 
-    print("Final updated binary values: l = {}, h = {}, output = {}".format(l, h, out), end='\n\n')
+    print(" c. updates and outputs: l = {}, h = {}, output = {}".format(l, h, out), end='\n\n')
 
     return {
         "l": l,
@@ -209,12 +209,12 @@ for i in range(N, len(sequence)):
 
         symbol_outputs.append((n, output))
 
-        encoding = arithmetic_encoder(low, high, e3_counter, m, output)
-        low = encoding["l"]
-        high = encoding["h"]
-        # print("Low = {}, High = {}".format(low, high))
-        e3_counter = encoding["e3"]
-        code += encoding["output"]
+        if not (output["l_prob"] == 0.0 and output["h_prob"] == 1.0):
+            encoding = arithmetic_encoder(low, high, e3_counter, m, output)
+            low = encoding["l"]
+            high = encoding["h"]
+            e3_counter = encoding["e3"]
+            code += encoding["output"]
 
         if output["symbol"] == symb:
             if code != '':

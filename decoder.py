@@ -66,41 +66,6 @@ def update_lh(m, t_bin, rem_tag, l_bin, h_bin, l_prob, h_prob):
     return l, h, t_bin, rem_tag
 
 
-def search_order_minus1(t_bin, input_tag, l_bin, h_bin, m):
-    # this bit works fine
-    tg = int(t_bin, 2)
-    l = int(l_bin, 2)
-    h = int(h_bin, 2)
-    symb = None
-    low_bound = 0
-    high_bound = 1
-
-    # the 128 comes from the order -1 distribution, i.e. all 128 symbols
-    freq_val = math.floor(((tg - l + 1) * 128 - 1) / (h - l + 1))
-    p = freq_val / 128
-
-    # this is where you check what interval correlated to p (in order -1)
-    for j in range(128):
-        low_bound = j * (1 / 128)
-        high_bound = (j + 1) * (1 / 128)
-
-        if low_bound <= p < high_bound:
-            symb = chr(j)
-            # print("interval = [{}, {}), char = {}".format(low_bound, high_bound, symb))
-            break
-
-    print("9) order -1 context: p = {}, interval = [{}, {}), symbol = {}".format(p, low_bound, high_bound, symb))
-
-    # update low and high bounds
-    new_lht = update_lh(m, t_bin, input_tag, l_bin, h_bin, low_bound, high_bound)
-
-    return {
-        "lht_update": new_lht,
-        "found": True,
-        "symbol": symb
-    }
-
-
 def backtrack_update(i, decoded_sequence, n, symb):
     while n <= N:
         # find nth order context
@@ -125,71 +90,91 @@ def backtrack_update(i, decoded_sequence, n, symb):
         n += 1
 
 
-def symbol_search(c, n, tg_bin, init_tag, i, l_bin, h_bin, exclusion_list, decoded_sequence):
-    # print("round {}: D = ".format(i))
-    # for q in range(len(D)):
-    #     print(D[q])
-    # print(end='\n\n')
-    # print("context =", c)
+def find_bounds(t_bin, l_bin, h_bin, total, n, c):
+    tg = int(t_bin, 2)
+    l = int(l_bin, 2)
+    h = int(h_bin, 2)
+    symb = None
+    low_bound, high_bound = 0, 1
+
+    print(" a. inputs: tag = {} -> {}, low = {} -> {}, high = {} -> {}".format(t_bin, tg, l_bin, l, h_bin, h))
+
+    # find frequency value
+    frequency = math.floor(((tg - l + 1) * total - 1) / (h - l + 1))
+
+    print(" b. decoded frequency = {}".format(frequency))
+
+    # this is where you check what interval correlated to p (in order -1)
+    if n == -1:
+
+        while frequency >= high_bound:
+            high_bound += 1
+
+        low_bound = high_bound - 1
+        symb = chr(low_bound)
+
+        print(" c. using order -1, found symbol = {}, interval = [{}/{}, {}/{})".format(symb, low_bound, total, high_bound, total))
+    else:
+        # find symbol corresponding to the interval p falls within
+        keys = list(D[n][c].keys())
+        j = 0
+        high_bound = D[n][c][keys[j]]
+        while frequency >= high_bound:
+            j += 1
+            low_bound = high_bound
+            high_bound += D[n][c][keys[j]]
+
+        symb = keys[j]
+
+        print(" c. using higher order: {} <= {} < {}, found symbol = {}, interval = [{}, {}) = [{}, {})".format(low_bound, frequency, high_bound, symb, low_bound, high_bound, low_bound/total, high_bound/total))
+
+    low_bound = low_bound / total
+    high_bound = high_bound / total
+
+    return low_bound, high_bound, symb
+
+
+def symbol_search(c, n, tg_bin, i, l_bin, h_bin, exclusion_list, decoded_sequence):
 
     # search order n for context
     if c in D[n].keys():
         # if context found, check if there are any non-zero counts
         print("1) context in D with symbols: D[{}]['{}'] = {}".format(n, context, D[n][context]))
+
         sum_values = sum([D[n][c][k] for k in D[n][c].keys() if k not in exclusion_list])
 
         if sum_values > 0:
-            print("2) non-zero context values found: sum_values = {}".format(sum_values))
 
-            # calculate freq_val then p based upon counts in this section
-            tg = int(tg_bin, 2)
-            l = int(l_bin, 2)
-            h = int(h_bin, 2)
+            low_bound, high_bound, symb = find_bounds(t_bin=tg_bin, l_bin=l_bin, h_bin=h_bin,
+                                                      total=sum_values, n=n, c=c)
 
-            freq_val = math.floor(((tg - l + 1) * sum_values - 1) / (h - l + 1))
-            p = freq_val / sum_values
-            prob = (tg - l) / (h - l)
-            p = prob
-            print("freq_val = {}, p = {}, PROB = {}".format(freq_val, p, prob))
-
-            # find symbol corresponding to the interval p falls within
-            keys = D[n][c].keys()
-            symb = "esc"
-
-            low_bound, high_bound = 0, 0
-            for key in keys:
-                low_bound = high_bound
-                high_bound += D[n][c][key] / sum_values
-                if low_bound <= p < high_bound:
-                    symb = key
-                    break
+            print("2) sum of values > 0: sum = {}, found bound = [{}, {}), symbol = {}".format(sum_values, low_bound, high_bound, symb))
 
             # if found symbol is the escape symbol, update l and h and decrement n
             if symb == "esc":
-                new_lht = update_lh(m, tg_bin, init_tag, l_bin, h_bin, l_prob=low_bound, h_prob=high_bound)
+                keys = D[n][c].keys()
                 exclusion_list.extend([k for k in keys if k != "esc"])
-                out = {"lht_update": new_lht, "excl": exclusion_list, "found": False, "symbol": "esc"}
+
+                out = {"low": low_bound, "high": high_bound, "excl": exclusion_list, "found": False, "symbol": "esc"}
             # otherwise we've found the symbol
             else:
-                print("3) symbol found and non-zero, encode it: symbol = {}, low prob = {}, high prob = {}".format(symb, low_bound, high_bound))
                 # output symbol, update l and h and backtrack through orders n -> N updating context-symbol counts
-                new_lht = update_lh(m, tg_bin, init_tag, l_bin, h_bin, l_prob=low_bound, h_prob=high_bound)
+                print("3) correct symbol found, perform backtrack update")
                 backtrack_update(i, decoded_sequence, n, symb)
-                out = {"lht_update": new_lht, "excl": exclusion_list, "found": True, "symbol": symb}
+
+                out = {"low": low_bound, "high": high_bound, "excl": exclusion_list, "found": True, "symbol": symb}
         # otherwise, if no non-zero elements corresponding to context
         else:
             # this bit works fine
-            print("6) all symbols zero, escape: symbol = 'esc', low prob = 0, high prob = 1")
-            # update l and h and decrement n
-            new_lht = update_lh(m, tg_bin, init_tag, l_bin, h_bin, l_prob=0.0, h_prob=1.0)
-            out = {"lht_update": new_lht, "excl": exclusion_list, "found": False, "symbol": "esc"}
+            print("4) all symbols zero, escape: symbol = 'esc', prob bound = [0.0, 1.0)")
+
+            out = {"low": 0.0, "high": 1.0, "excl": exclusion_list, "found": False, "symbol": "esc"}
     # otherwise, if context not in D
     else:
         # this bit works fine
-        print("8) context never observed, escape: symbol = 'esc', low prob = 0, high prob = 1")
-        # update l and h and decrement n
-        new_lht = update_lh(m, tg_bin, init_tag, l_bin, h_bin, l_prob=0.0, h_prob=1.0)
-        out = {"lht_update": new_lht, "excl": exclusion_list, "found": False, "symbol": "esc"}
+        print("5) context never observed, escape: symbol = 'esc', prob bound = [0.0, 1.0)")
+
+        out = {"low": 0.0, "high": 1.0, "excl": exclusion_list, "found": False, "symbol": "esc"}
 
     return out
 
@@ -212,25 +197,33 @@ sequence = "----"
 tag_length = len(remaining_tag)
 
 # while tag_length > 0:
-for count in range(N, 12):
+for count in range(N, 13):
     # print("\n\nCOUNT={}\n".format(count))
     output = None
     order = N
     excluded = []
+    print("\n   DECODING SYMBOL {}".format(count))
+
     while order > -2:
         if order > -1:
             context = sequence[count-order:]
-            # print("context = {}".format(context))
-            output = symbol_search(context, order,
-                                   tg_bin=current_tag, init_tag=remaining_tag,
+            print("\nSEARCHING ORDER {}, CONTEXT = {}".format(order, context))
+
+            output = symbol_search(context, order, tg_bin=current_tag,
                                    i=count, l_bin=low, h_bin=high,
                                    exclusion_list=excluded, decoded_sequence=sequence)
 
-            excluded = output["excl"]
-            low, high, current_tag, remaining_tag = output["lht_update"]
-            tag_length = len(remaining_tag)
+            low_prob = output["low"]
+            high_prob = output["high"]
 
-            print("Low = {}, High {}, Tag = {}".format(low, high, current_tag))
+            if not (low_prob == 0.0 and high_prob == 1.0):
+                low, high, current_tag, remaining_tag = update_lh(m=m,
+                                                                  t_bin=current_tag, rem_tag=remaining_tag,
+                                                                  l_bin=low, h_bin=high,
+                                                                  l_prob=low_prob, h_prob=high_prob)
+
+            excluded = output["excl"]
+            tag_length = len(remaining_tag)
 
             if output["found"]:
                 # print("FOUND CHAR = {}".format(output["symbol"]))
@@ -239,19 +232,20 @@ for count in range(N, 12):
             else:
                 # print("ESCAPE ORDER {}".format(order))
                 order -= 1
-
         else:
-            output = search_order_minus1(t_bin=current_tag, input_tag=remaining_tag,
-                                         l_bin=low, h_bin=high, m=m)
-            symbol = output["symbol"]
+            print("\nUSING ORDER -1")
 
-            # print("FOUND CHAR = {}".format(symbol))
+            low_prob, high_prob, symbol = find_bounds(t_bin=current_tag, l_bin=low, h_bin=high,
+                                                      total=128, n=order, c=None)
 
             # update counts for all orders in D
-            backtrack_update(i=count, decoded_sequence=sequence,
-                             n=0, symb=symbol)
+            backtrack_update(i=count, decoded_sequence=sequence, n=0, symb=symbol)
 
-            low, high, current_tag, remaining_tag = output["lht_update"]
+            low, high, current_tag, remaining_tag = update_lh(m=m,
+                                                              t_bin=current_tag, rem_tag=remaining_tag,
+                                                              l_bin=low, h_bin=high,
+                                                              l_prob=low_prob, h_prob=high_prob)
+
             tag_length = len(remaining_tag)
             sequence += symbol
 

@@ -36,15 +36,17 @@ def output_file(encoded_seq, file_name):
 
 def get_interval(symb, total):
 
-    # char_code = ord(symb)
-    # prev_p = char_code / total
-    # p = (char_code + 1) / total
-
-    total = 50
-    table = {"0": 0, "1": 40, "2": 41, "3": 50}
     keys = list(table.keys())
     prev_p = table[keys[keys.index(symb) - 1]] / total
     p = table[symb] / total
+
+    if prev_p > p:
+        print("Error, probability interval calculated incorrectly: [{}, {})".format(prev_p, p))
+        exit(1)
+
+    # if symb == ' ':
+    #     print("ENCODING A SPACE: chosen interval = [{}, {}), ord(space) = {}".format(prev_p, p, ord(' ')))
+    #     exit(2)
 
     return prev_p, p
 
@@ -101,7 +103,13 @@ def terminate_encoding(l, e3):
 
 
 sequence, file = get_file_input()
-print("Sequence to encode:", sequence, end='\n\n')
+print("Sequence to encode:", sequence)
+
+no_chars = 128
+table_vals = {chr(v): v+1 for v in range(128)}
+table = {'': 0}
+table.update(table_vals)
+print("char table:", table, end='\n\n')
 
 outputs = []
 code = ''
@@ -109,11 +117,13 @@ m = 8
 low = '0' * m
 high = '1' * m
 e3_counter = 0
+length = 0
 
 for symbol in sequence:
-    print("ENCODING SYMBOL:", symbol)
+    length += 1
+    print("ENCODING SYMBOL {} = {}".format(length, symbol))
 
-    low_prob, high_prob = get_interval(symbol, total=128)
+    low_prob, high_prob = get_interval(symbol, no_chars)
     outputs.append({"symbol": symbol, "low": low_prob, "high": high_prob})
 
     low, high, e3_counter, codeword = arithmetic_encoder(low, high, e3_counter, m, low_prob, high_prob)

@@ -3,4 +3,9 @@ encrypt.exe
 testEncoderDecoder.py
 test.txt
 test.lz
+
+addresses.p
+dictionary_words.txt
+top1000_words.txt
+
 venv/**

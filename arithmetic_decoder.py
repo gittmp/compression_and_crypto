@@ -13,7 +13,7 @@ def get_file_input():
         print("Not a compatible compressed file!")
         exit()
 
-    file = open(file_name, 'r')
+    file = open(file_name, 'r', encoding='ascii')
 
     if file.mode != 'r':
         print("Error")
@@ -52,21 +52,24 @@ def find_bounds(t_bin, l_bin, h_bin, total):
 
     symb = keys[j]
 
-    print(" c. found symbol = {}, interval = [{}/{}, {}/{})".format(symb, low_bound, total, high_bound, total))
+    print(" c. found symbol = {}, interval = [{}/{}, {}/{}) = [{}, {})".format(symb, low_bound, total, high_bound, total, low_bound/total, high_bound/total))
+
+    low_bound = low_bound / total
+    high_bound = high_bound / total
 
     return low_bound, high_bound, str(symb)
 
 
-def update_lh(t_bin, rem_tag, l_bin, h_bin, l_freq, h_freq, total):
+def update_lh(t_bin, rem_tag, l_bin, h_bin, l_prob, h_prob):
     print("2) updating low and high bounds")
 
     l_old = int(l_bin, 2)
     h_old = int(h_bin, 2)
 
-    l_new = l_old + math.floor(((h_old - l_old + 1) * l_freq) / total)
-    h_new = l_old + math.floor(((h_old - l_old + 1) * h_freq) / total) - 1
+    l_new = l_old + math.floor((h_old - l_old + 1) * l_prob)
+    h_new = l_old + math.floor((h_old - l_old + 1) * h_prob) - 1
 
-    print(" a. low freq = {}, high freq = {}".format(l_freq, h_freq))
+    print(" a. low prob = {}, high prob = {}".format(l_prob, h_prob))
     print(" b. int l_old -> l_new: {} -> {}".format(l_old, l_new))
     print(" c. int h_old -> h_new: {} -> {}".format(h_old, h_new))
 
@@ -103,16 +106,15 @@ def update_lh(t_bin, rem_tag, l_bin, h_bin, l_freq, h_freq, total):
 file, remaining_tag = get_file_input()
 print("Sequence to decode:", remaining_tag)
 
-# no_chars = 128
-# table_vals = {chr(v): v+1 for v in range(128)}
-# table = {'': 0}
-# table.update(table_vals)
-# print("char table:", table, end='\n\n')
+max_char = 128
+table_vals = {chr(v): v+1 for v in range(128)}
+table = {'': 0}
+table.update(table_vals)
 
 # max_char = 3
 # table = {'': 0, 'a': 1, 'b': 2, 'c': 3}
-max_char = 48
-table = {'': 0, 'a': 16, 'b': 32, 'c': 48}
+# max_char = 48
+# table = {'': 0, 'a': 16, 'b': 32, 'c': 48}
 
 print("char table:", table, end='\n\n')
 
@@ -125,14 +127,14 @@ low = '0' * m
 high = '1' * m
 sequence = ""
 
-for count in range(4):
+for count in range(12):
     print("\n   DECODING SYMBOL INDEX {}".format(count))
 
     low_prob, high_prob, symbol = find_bounds(current_tag, low, high, max_char)
 
     low, high, current_tag, remaining_tag = update_lh(t_bin=current_tag, rem_tag=remaining_tag,
                                                       l_bin=low, h_bin=high,
-                                                      l_freq=low_prob, h_freq=high_prob, total=max_char)
+                                                      l_prob=low_prob, h_prob=high_prob)
 
     tag_length = len(remaining_tag)
     sequence += symbol

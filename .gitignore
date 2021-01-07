@@ -7,5 +7,6 @@ test.lz
 addresses.p
 dictionary_words.txt
 top1000_words.txt
+more_addresses.p
 
 venv/**

@@ -1,27 +1,7 @@
 import os
 import sys
 import math
-
-
-def get_file_input():
-    file_name = sys.argv[1]
-    name, extension = os.path.splitext(file_name)
-    print("File name: ", name)
-
-    # change to .tex in final implementation
-    if extension != ".lz":
-        print("Not a compatible compressed file!")
-        exit()
-
-    file = open(file_name, 'r', encoding='ascii')
-
-    if file.mode != 'r':
-        print("Error")
-        exit()
-
-    tag = file.read()
-
-    return name, tag
+import pickle
 
 
 def find_bounds(t_bin, l_bin, h_bin, total):
@@ -40,24 +20,25 @@ def find_bounds(t_bin, l_bin, h_bin, total):
     print(" b. decoded frequency = (({} - {} + 1) * {} - 1) / ({} - {} + 1) = {}".format(tg, l, total, h, l, frequency))
 
     # this is where you check what interval correlated to p
-    keys = list(table.keys())
+    # keys = list(table.keys())
     j = 0
 
-    print(" c. searching key list: freq = {}, keys = {}".format(frequency, keys))
-
     while frequency >= high_bound:
-        j += 1
         low_bound = high_bound
-        high_bound = table[keys[j]]
+        j += 1
+        high_bound = j
+        # low_bound = high_bound
+        # high_bound = table[keys[j]]
 
-    symb = keys[j]
+    # symb = keys[j]
+    symb = low_bound
 
-    print(" c. found symbol = {}, interval = [{}/{}, {}/{}) = [{}, {})".format(symb, low_bound, total, high_bound, total, low_bound/total, high_bound/total))
+    print(" c. found symbol = {}, interval = [{}/{}, {}/{}) = [{}, {})".format(repr(symb), low_bound, total, high_bound, total, low_bound/total, high_bound/total))
 
     low_bound = low_bound / total
     high_bound = high_bound / total
 
-    return low_bound, high_bound, str(symb)
+    return low_bound, high_bound, symb
 
 
 def update_lh(t_bin, rem_tag, l_bin, h_bin, l_prob, h_prob):
@@ -103,20 +84,23 @@ def update_lh(t_bin, rem_tag, l_bin, h_bin, l_prob, h_prob):
     return l, h, t_bin, rem_tag
 
 
-file, remaining_tag = get_file_input()
-print("Sequence to decode:", remaining_tag)
-
 max_char = 128
-table_vals = {chr(v): v+1 for v in range(128)}
-table = {'': 0}
-table.update(table_vals)
+# table_vals = {chr(v): v+1 for v in range(128)}
+# table = {'': 0}
+# table.update(table_vals)
+# print("char table:", table, end='\n\n')
 
-# max_char = 3
-# table = {'': 0, 'a': 1, 'b': 2, 'c': 3}
-# max_char = 48
-# table = {'': 0, 'a': 16, 'b': 32, 'c': 48}
+file = sys.argv[1]
+file_name, extension = os.path.splitext(file)
+print("File name: ", file_name)
 
-print("char table:", table, end='\n\n')
+# change to .tex in final implementation
+if extension != ".lz":
+    print("Not a compatible compressed file!")
+    exit(1)
+
+with open(file, 'rb') as f:
+    remaining_tag = pickle.load(f)
 
 m = 8
 current_tag = remaining_tag[:m]
@@ -126,9 +110,10 @@ outputs = []
 low = '0' * m
 high = '1' * m
 sequence = ""
+length = 13
 
-for count in range(12):
-    print("\n   DECODING SYMBOL INDEX {}".format(count))
+for count in range(length):
+    print("\n   DECODING SYMBOL INDEXED {}".format(count))
 
     low_prob, high_prob, symbol = find_bounds(current_tag, low, high, max_char)
 
@@ -136,7 +121,7 @@ for count in range(12):
                                                       l_bin=low, h_bin=high,
                                                       l_prob=low_prob, h_prob=high_prob)
 
-    tag_length = len(remaining_tag)
-    sequence += symbol
+    sequence += chr(symbol)
 
-print("sequence = {}".format(sequence))
+for char in sequence:
+    print(repr(char), end='')

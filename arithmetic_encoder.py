@@ -1,43 +1,22 @@
 import sys
 import os
 import math
-
-
-def get_file_input():
-    file_name = sys.argv[1]
-    name, extension = os.path.splitext(file_name)
-    print("File name: ", name)
-
-    # change to .tex in final implementation
-    if extension != ".txt":
-        print("Not a LaTeX file!")
-        exit(1)
-
-    f = open(file_name, 'r', encoding='ascii')
-
-    file_contents = f.read()
-
-    return file_contents, name
-
-
-def output_file(encoded_seq, file_name):
-
-    f = open(file_name + ".lz", 'w', encoding='ascii')
-    encoded_seq = str(encoded_seq)
-    f.write(encoded_seq)
-    f.close()
+import pickle
 
 
 def get_interval(symb, total):
 
-    keys = list(table.keys())
-    prev_p = table[keys[keys.index(symb) - 1]]
-    p = table[symb]
+    # keys = list(table.keys())
+    # prev_p = table[keys[keys.index(symb) - 1]]
+    # p = table[symb]
 
-    print("1) Interval found: symbol = {}, interval = [{}/{},{}/{}) = [{},{})".format(symb, prev_p, total, p, total, prev_p/total, p/total))
+    p = (int(symb) + 1) / total
+    prev_p = int(symb) / total
 
-    prev_p = prev_p / total
-    p = p / total
+    print("1) Interval found: symbol = {}, interval = [{}/{},{}/{}) = [{},{})".format(repr(symb), prev_p, total, p, total, prev_p/total, p/total))
+
+    # prev_p = prev_p / total
+    # p = p / total
 
     if prev_p > p:
         print("Error, probability interval calculated incorrectly: [{}, {})".format(prev_p, p))
@@ -105,20 +84,13 @@ def terminate_encoding(l, e3):
     return out
 
 
-sequence, file = get_file_input()
-print("Sequence to encode:", sequence)
-
 max_char = 128
-table_vals = {chr(v): v+1 for v in range(128)}
-table = {'': 0}
-table.update(table_vals)
+# table_vals = {chr(v): v+1 for v in range(max_char)}
+# table = {'': 0}
+# table.update(table_vals)
+# print("char table:", table, end='\n\n')
 
-# max_char = 3
-# table = {'': 0, 'a': 1, 'b': 2, 'c': 3}
-# max_char = 48
-# table = {'': 0, 'a': 16, 'b': 32, 'c': 48}
 
-print("char table:", table, end='\n\n')
 
 outputs = []
 code = ''
@@ -128,19 +100,36 @@ high = '1' * m
 e3_counter = 0
 length = 0
 
-for symbol in sequence:
-    length += 1
-    print("ENCODING SYMBOL {} = '{}'".format(length, str(symbol)))
 
-    low_prob, high_prob = get_interval(symbol, max_char)
-    outputs.append({"symbol": symbol, "low": low_prob, "high": high_prob})
+file = sys.argv[1]
+file_name, extension = os.path.splitext(file)
+print("File name: ", file_name)
 
-    low, high, e3_counter, codeword = arithmetic_encoder(low, high, e3_counter, m, low_prob, high_prob)
-    code += codeword
+# change to .tex in final implementation
+if extension != ".txt":
+    print("Not a LaTeX file!")
+    exit(1)
+
+with open(file, 'rb') as f:
+    for line in f:
+        print("\nLine:", repr(line))
+
+        for char in line:
+            print("Byte: {}, Char: {}".format(char, repr(chr(char))))
+
+            length += 1
+            print("ENCODING SYMBOL INDEXED {}".format(length))
+
+            low_prob, high_prob = get_interval(char, max_char)
+            outputs.append({"symbol": char, "low": low_prob, "high": high_prob})
+
+            low, high, e3_counter, codeword = arithmetic_encoder(low, high, e3_counter, m, low_prob, high_prob)
+            code += codeword
 
 terminal_code = terminate_encoding(low, e3_counter)
 code += terminal_code
 
 print("Output encoding:", code)
 
-output_file(code, file)
+with open(file_name + ".lz", 'wb') as f:
+    pickle.dump(code, f)

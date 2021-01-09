@@ -1,3 +1,5 @@
+import sys
+import os
 import math
 import pickle
 
@@ -7,7 +9,7 @@ class ArithmeticEncoder:
     def __init__(self):
         self.max_freq = 256
         self.freq_table = [n for n in range(self.max_freq + 1)]
-        print("frequency array:", self.freq_table)
+        # print("frequency array:", self.freq_table)
         self.m = 8
         self.e3 = 0
         self.low = 0
@@ -25,9 +27,6 @@ class ArithmeticEncoder:
 
             self.low = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[byte]) / self.max_freq)
             self.high = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[byte + 1]) / self.max_freq) - 1
-
-            # print("low_prev = {}, high_prev = {}".format(low_prev, high_prev))
-            # print("new low = {}, new high = {}".format(self.low, self.high))
 
             l = format(self.low).zfill(self.m)
             h = format(self.high).zfill(self.m)
@@ -88,17 +87,27 @@ class ArithmeticEncoder:
         return finished_encoding, data
 
 
-message = b"heya my name tom!!\n Dawson-halgate is {lol} 123"
+file = sys.argv[1]
+file_name, extension = os.path.splitext(file)
+# print("File name: ", file_name)
+
+# change to .tex in final implementation
+if extension != ".tex":
+    print("Not a LaTeX file!")
+    exit(1)
+
+with open(file, 'rb') as f:
+    message = f.read()
 
 encoder = ArithmeticEncoder()
 encoding, info = encoder.full_encoding(message)
 
-print("compressing sequence:", message)
-print("input file size:", info[2])
-print("output file size:", info[1])
-print("compression ratio:", info[0])
+# print("compressing sequence:", message)
+# print("input file size:", info[2])
+# print("output file size:", info[1])
+# print("compression ratio:", info[0])
+#
+# print("\nencoding:", encoding)
 
-print("\nencoding:", encoding)
-
-with open('encoding.lz', 'wb') as file:
+with open(file_name + '.lz', 'wb') as file:
     pickle.dump(encoding, file)

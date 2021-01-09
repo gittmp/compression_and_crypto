@@ -2,9 +2,11 @@ spec.pdf
 encrypt.exe
 testEncoderDecoder.py
 pyae.py
+test.tex
 test.txt
 test.lz
-encoding.lz
+test-decoded.txt
+test-decoded.tex
 
 addresses.p
 dictionary_words.txt

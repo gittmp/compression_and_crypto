@@ -6,14 +6,17 @@ import pickle
 
 class ArithmeticEncoder:
 
-    def __init__(self):
-        self.max_freq = 256
-        self.freq_table = [n for n in range(self.max_freq + 1)]
-        # print("frequency array:", self.freq_table)
+    def __init__(self, freq_table=None, max_freq=256):
+        self.max_freq = max_freq
         self.m = 8
         self.e3 = 0
         self.low = 0
         self.high = 255
+
+        if freq_table is None:
+            self.freq_table = [n for n in range(self.max_freq + 1)]
+        else:
+            self.freq_table = freq_table
 
     def encode(self, sequence):
         byte_count = 0
@@ -89,7 +92,7 @@ class ArithmeticEncoder:
 
 file = sys.argv[1]
 file_name, extension = os.path.splitext(file)
-# print("File name: ", file_name)
+print("File name: ", file_name)
 
 # change to .tex in final implementation
 if extension != ".tex":
@@ -102,12 +105,12 @@ with open(file, 'rb') as f:
 encoder = ArithmeticEncoder()
 encoding, info = encoder.full_encoding(message)
 
-# print("compressing sequence:", message)
-# print("input file size:", info[2])
-# print("output file size:", info[1])
-# print("compression ratio:", info[0])
-#
-# print("\nencoding:", encoding)
+print("compressing sequence:", message)
+print("input file size:", info[2])
+print("output file size:", info[1])
+print("compression ratio:", info[0])
+
+print("\nencoding:", encoding)
 
 with open(file_name + '.lz', 'wb') as file:
     pickle.dump(encoding, file)

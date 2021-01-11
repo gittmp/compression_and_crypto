@@ -10,7 +10,9 @@ class PPMDecoder:
         self.m = 10
         self.e3 = 0
         self.low = 0
-        self.high = 1024
+        self.high = 0
+        for h in range(self.m):
+            self.high += 2 ** h
 
         if freq_table is None:
             self.freq_table = [n for n in range(self.max_freq + 1)]
@@ -73,7 +75,7 @@ class PPMDecoder:
                             order -= 1
                         # if there are non-zero entries:
                         else:
-                            print("non-zero entries found in D[{}]".format(order))
+                            print("2) non-zero context values found in D[{}]: sum_values = {}, excluded = {}".format(order, sum_values, excluded))
 
                             found, excluded, symbol = self.ppm_update(sum_values, order, context, excluded)
                             self.process_lht()
@@ -81,6 +83,10 @@ class PPMDecoder:
                             # if PPM found the correct byte:
                             if found:
                                 print("Found byte = {}".format(symbol))
+                                if not (0 <= int(symbol) < 256):
+                                    print("\nERROR, decoded symbol invalid:", symbol)
+                                    exit(1)
+
                                 # backtrack update PPM table orders n -> self.N given seen contexts/symbol
                                 self.backtrack_update(byte_count, order, str(symbol))
                                 break
@@ -96,11 +102,16 @@ class PPMDecoder:
                     self.process_lht()
 
                     print("decoding in order -1, found byte =", symbol)
+                    if not (0 <= int(symbol) < 256):
+                        print("\nERROR, decoded symbol invalid:", symbol)
+                        exit(1)
 
                     # backtrack update PPM table orders 0 -> self.N given seen contexts/symbol
                     self.backtrack_update(byte_count, order, str(symbol))
 
                     break
+
+            print("CURRENT OUTPUT =", repr(bytes(self.output)))
 
             # print("self.output = {}".format(self.output))
 
@@ -116,7 +127,7 @@ class PPMDecoder:
         print("frequency = ((({} - {} + 1) * {}) - 1) / ({} - {} + 1) = {}".format(tag, self.low, sum_values, self.high, self.low, frequency))
 
         # find low prob and high prob using PPM table, and associated symbol
-        keys = list(self.D[n][c].keys())
+        keys = [k for k in self.D[n][c].keys() if k not in exclusion_list]
         j = 0
         low_bound = 0
         high_bound = self.D[n][c][keys[0]]
@@ -208,8 +219,7 @@ class PPMDecoder:
 
     def backtrack_update(self, current_position, n, symb):
         # NOTE: when adding new symbols, remember to convert to a string as its a byte
-        print("\nBACKTRACKING TO UPDATE D:")
-        print("   CURRENT VARS: pos = {}, symb = {}, output = {}".format(current_position, symb, self.output))
+        print("BACKTRACKING TO UPDATE D")
         n = max(n, 0)
         current_output = self.output[:-1]
 
@@ -217,15 +227,12 @@ class PPMDecoder:
             # find corresponding context to current order
             if n == 0:
                 c = '[]'
-                print("   ZERO: order = {}, context = {}".format(n, c))
             elif len(current_output) <= n:
                 byts = ["-"] * (n - len(current_output))
                 byts.extend(current_output)
                 c = str(byts)
-                print("   MADE: order = {}, context = {}".format(n, c))
             else:
                 c = str(current_output[-n:])
-                print("   READ: order = {}, context = {}".format(n, c))
 
             # update count of context-symbol in D
             if c in self.D[n].keys():
@@ -257,11 +264,14 @@ class PPMDecoder:
 
         self.e3 = 0
         self.low = 0
-        self.high = 1024
         self.start = 0
         self.full_tag = ''
         self.binary_tag = ''
         self.output = []
+
+        self.high = 0
+        for h in range(self.m):
+            self.high += 2 ** h
 
         return decoding, data
 

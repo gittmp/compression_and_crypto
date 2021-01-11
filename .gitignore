@@ -11,6 +11,6 @@ crypto/submatches.p
 crypto/dictionary_words.txt
 crypto/top1000_words.txt
 
-spec.pdf
 .DS_Store
+spec.pdf
 venv/**

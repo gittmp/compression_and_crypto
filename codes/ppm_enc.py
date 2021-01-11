@@ -11,7 +11,9 @@ class PPMEncoder:
         self.m = 10
         self.e3 = 0
         self.low = 0
-        self.high = 1024
+        self.high = 0
+        for h in range(self.m):
+            self.high += 2 ** h
 
         self.N = 4
         self.D = [{} for _ in range(self.N + 1)]
@@ -84,8 +86,8 @@ class PPMEncoder:
             self.high = low_prev + math.floor(((high_prev - low_prev + 1) * h_freq) / total) - 1
             print("Bounds = [{},{}), new low = {}, new high = {}".format(l_freq, h_freq, self.low, self.high))
 
-        if self.low == self.high:
-            print("oh no low and high are equal eeeeek")
+        if self.low >= self.high:
+            print("\noh no low and high are equal (or incorrect order) eeeeek")
             print("self.low = {}, self.high = {}".format(self.low, self.high))
             exit(1)
 
@@ -212,11 +214,13 @@ class PPMEncoder:
         data = self.output_data(complete_encoding, no_bytes)
         data = (data[0], data[1], no_bytes)
 
+        self.output = []
         self.e3 = 0
         self.low = 0
-        self.high = 1024
-        self.output = []
-        # self.D = [{} for _ in range(self.N + 1)]
+
+        self.high = 0
+        for h in range(self.m):
+            self.high += 2 ** h
 
         return complete_encoding, data
 

@@ -8,7 +8,7 @@ class PPMEncoder:
 
     def __init__(self, freq_table=None, max_freq=256):
         self.max_freq = max_freq
-        self.m = 10
+        self.m = 13
         self.e3 = 0
         self.low = 0
         self.high = 0
@@ -42,6 +42,7 @@ class PPMEncoder:
             print("\nBYTE NO. =", byte_count)
 
             while order > -2:
+                print("ORDER =", order)
                 if order > -1:
 
                     if b < order:
@@ -53,13 +54,17 @@ class PPMEncoder:
                         context = str([byt for byt in sequence[b - order:b]])
                         print("existing context = ", context)
 
+                    try:
+                        print("found context: D[{}][{}] = {}".format(order, context, self.D[order][context]))
+                    except KeyError:
+                        print("context not found in D[{}]".format(order))
+
                     probabilities, excluded = self.ppm_step(str(byte), order, context, excluded)
                     low_prob = probabilities['l_prob']
                     high_prob = probabilities['h_prob']
                     total = probabilities['sum']
 
-                    if low_prob != 0.0 and high_prob != 1.0:
-                        self.encode_step(byte, order, low_prob, high_prob, total)
+                    self.encode_step(byte, order, low_prob, high_prob, total)
 
                     if probabilities['symbol'] == byte:
                         print("breaking!")

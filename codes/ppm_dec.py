@@ -7,7 +7,7 @@ import pickle
 class PPMDecoder:
     def __init__(self, freq_table=None, max_freq=256):
         self.max_freq = max_freq
-        self.m = 10
+        self.m = 13
         self.e3 = 0
         self.low = 0
         self.high = 0
@@ -36,7 +36,7 @@ class PPMDecoder:
         self.binary_tag = self.full_tag[:self.m]
         byte_count = 0
 
-        while self.binary_tag != '' and byte_count < 100:
+        while self.binary_tag != '':
             byte_count += 1
             order = self.N
             excluded = []
@@ -64,6 +64,8 @@ class PPMDecoder:
                         order -= 1
                     # if found:
                     else:
+                        print("found context: D[{}][{}] = {}".format(order, context, self.D[order][context]))
+
                         # check if corresponding table row contains any non-zero entries
                         sum_values = sum([self.D[order][context][k] for k in self.D[order][context].keys() if k not in excluded])
 

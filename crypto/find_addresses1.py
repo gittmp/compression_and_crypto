@@ -3,10 +3,11 @@ from tqdm import tqdm
 import subprocess
 import pickle
 
-"""
+
 key = "1T7OBHEH"
 geocoder = what3words.Geocoder(key)
 
+"""
 addresses3, all_words = [], []
 
 with open("crypto/dictionary_words.txt") as fp:
@@ -15,18 +16,34 @@ with open("crypto/dictionary_words.txt") as fp:
 
         if word[0].islower() and word not in all_words:
             all_words.append(word)
-"""
+
 
 with open('crypto/addresses1.p', 'rb') as fp:
     addresses1 = pickle.load(fp)
 
 with open('crypto/addresses2.p', 'rb') as fp:
     addresses2 = pickle.load(fp)
+"""
 
 
+addresses = ["body.cheese.bank", "body.cheese.bond", "body.cherry.body", "bags.simmer.busy"]
+matching_addresses = []
+
+for address in addresses:
+    res = geocoder.autosuggest(address, clip_to_country="GB", n_results=100)
+    res = res['suggestions']
+
+    for obj in res:
+        addr = obj['words']
+
+        if (len(addr) == 16) and (addr not in addresses):
+            matching_addresses.append(addr)
+
+
+"""
 # searching for matching substrings in addresses
 # substrings = ['ba', 'ag', 'gs', 's.', '.s', 'si', 'im', 'mm', 'me', 'er', 'r.', '.b', 'bu', 'us', 'sy']
-substrings = ['si']
+substrings = ['me']
 output = []
 addresses = []
 
@@ -59,6 +76,7 @@ print("Found {} addresses with submatches".format(len(addresses)))
 
 with open('crypto/submatches.p', 'wb') as fp:
     pickle.dump(addresses, fp)
+"""
 
 """
 # select 1 word find addresses for 'word..' '.word.' '..word' which have length of 16 (incl. dots)

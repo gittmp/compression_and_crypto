@@ -8,7 +8,7 @@ class PPMEncoder:
 
     def __init__(self, freq_table=None, max_freq=256):
         self.max_freq = max_freq
-        self.m = 13
+        self.m = 10
         self.e3 = 0
         self.low = 0
         self.high = 0
@@ -32,8 +32,10 @@ class PPMEncoder:
 
     def encode(self, sequence):
         byte_count = 0
+        b = -1
 
-        for b in range(0, len(sequence)):
+        while b < len(sequence) - 1:
+            b += 1
             byte_count += 1
             byte = sequence[b]
 
@@ -64,7 +66,15 @@ class PPMEncoder:
                     high_prob = probabilities['h_prob']
                     total = probabilities['sum']
 
-                    self.encode_step(byte, order, low_prob, high_prob, total)
+                    result = self.encode_step(byte, order, low_prob, high_prob, total)
+
+                    if not result:
+                        self.m += 1
+                        self.reset()
+                        print("increasing value of self.m to {}".format(self.m))
+                        byte_count = 0
+                        b = -1
+                        break
 
                     if probabilities['symbol'] == byte:
                         # print("breaking!")
@@ -92,9 +102,10 @@ class PPMEncoder:
             # print("Bounds = [{},{}), new low = {}, new high = {}".format(l_freq, h_freq, self.low, self.high))
 
         if self.low >= self.high:
-            # print("\noh no low and high are equal (or incorrect order) eeeeek")
-            # print("self.low = {}, self.high = {}".format(self.low, self.high))
-            exit(1)
+            print("\noh no low and high are equal (or incorrect order) eeeeek")
+            print("self.low = {}, self.high = {}".format(self.low, self.high))
+            print("restarting program")
+            return False
 
         l = format(self.low).zfill(self.m)
         h = format(self.high).zfill(self.m)
@@ -124,7 +135,7 @@ class PPMEncoder:
 
                 self.e3 += 1
 
-        # print("   updated to: low = {}, high = {}".format(self.low, self.high))
+        return True
 
     def terminate_encoding(self, output):
         l = format(self.low, 'b').zfill(self.m)
@@ -213,12 +224,7 @@ class PPMEncoder:
 
         return ratio, output_size
 
-    def full_encoding(self, sequence):
-        partial_encoding, no_bytes = self.encode(sequence)
-        complete_encoding = self.terminate_encoding(partial_encoding)
-        data = self.output_data(complete_encoding, no_bytes)
-        data = (data[0], data[1], no_bytes)
-
+    def reset(self):
         self.output = []
         self.e3 = 0
         self.low = 0
@@ -226,6 +232,15 @@ class PPMEncoder:
         self.high = 0
         for h in range(self.m):
             self.high += 2 ** h
+
+        self.D = [{} for _ in range(self.N + 1)]
+
+    def full_encoding(self, sequence):
+        partial_encoding, no_bytes = self.encode(sequence)
+        complete_encoding = self.terminate_encoding(partial_encoding)
+        data = self.output_data(complete_encoding, no_bytes)
+        data = (data[0], data[1], no_bytes)
+        self.reset()
 
         return complete_encoding, data
 
@@ -256,5 +271,14 @@ encoding, info = encoder.full_encoding(message)
 
 # print("\nencoding:", encoding)
 
+print("\nFinal value of self.m = {}".format(encoder.m))
+# encoding = format(encoder.m, 'b').zfill(8) + encoding
+
+print("Encoding:", encoding[:25])
+print("Type:", type(encoding))
+
 with open(file_name + '.lz', 'wb') as file:
+    encoding = format(14, 'b').zfill(8) + encoding
     pickle.dump(encoding, file)
+
+print("\nENCODING COMPLETE!!\n")

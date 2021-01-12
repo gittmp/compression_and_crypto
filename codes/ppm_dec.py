@@ -7,7 +7,7 @@ import pickle
 class PPMDecoder:
     def __init__(self, freq_table=None, max_freq=256):
         self.max_freq = max_freq
-        self.m = 13
+        self.m = 10
         self.e3 = 0
         self.low = 0
         self.high = 0
@@ -33,8 +33,17 @@ class PPMDecoder:
         for p in range(len(self.D)):
             print(self.D[p])
 
-    def decode(self, full_tag):
-        self.full_tag = full_tag
+    def extract_m(self, full_tag):
+        self.m = int(full_tag[:8], 2)
+        self.full_tag = full_tag[8:]
+
+        self.high = 0
+        for h in range(self.m):
+            self.high += 2 ** h
+
+    def decode(self, input_tag):
+        self.extract_m(input_tag)
+
         self.binary_tag = self.full_tag[:self.m]
         self.int_tag = int(self.binary_tag, 2)
         byte_count = 0
@@ -90,7 +99,7 @@ class PPMDecoder:
                             if found:
                                 # print("Found byte = {}".format(symbol))
                                 if not (0 <= int(symbol) < 256):
-                                    # print("\nERROR, decoded symbol invalid:", symbol)
+                                    print("\nERROR, decoded symbol invalid:", symbol)
                                     exit(1)
 
                                 # backtrack update PPM table orders n -> self.N given seen contexts/symbol
@@ -115,7 +124,7 @@ class PPMDecoder:
 
                     # print("decoding in order -1, found byte = {}, type = {}".format(symbol, type(symbol)))
                     if not (0 <= int(symbol) < 256):
-                        # print("\nERROR, decoded symbol invalid:", symbol)
+                        print("\nERROR, decoded symbol invalid:", symbol)
                         exit(1)
 
                     # backtrack update PPM table orders 0 -> self.N given seen contexts/symbol
@@ -193,7 +202,7 @@ class PPMDecoder:
             bound += 1
 
         if bound >= self.max_freq:
-            # print("Decoding frequency bound not found")
+            print("Decoding frequency bound not found")
             exit(1)
 
         low_prev = self.low
@@ -275,10 +284,7 @@ class PPMDecoder:
 
         return enc_size, dec_size, ratio
 
-    def full_decoding(self, sequence):
-        decoding = self.decode(sequence)
-        data = self.output_data(sequence, decoding)
-
+    def reset(self):
         self.e3 = 0
         self.low = 0
         self.start = 0
@@ -291,6 +297,11 @@ class PPMDecoder:
         self.high = 0
         for h in range(self.m):
             self.high += 2 ** h
+
+    def full_decoding(self, sequence):
+        decoding = self.decode(sequence)
+        data = self.output_data(sequence, decoding)
+        self.reset()
 
         return decoding, data
 
@@ -306,6 +317,9 @@ if extension != ".lz":
 with open(file, 'rb') as f:
     encoding = pickle.load(f)
 
+print("Encoding:", encoding[:25])
+print("Type:", type(encoding))
+
 decoder = PPMDecoder()
 message, info = decoder.full_decoding(encoding)
 
@@ -319,3 +333,5 @@ message, info = decoder.full_decoding(encoding)
 
 with open(file_name + "-decoded.tex", 'wb') as f:
     f.write(message)
+
+print("\nDECODING COMPLETE!!\n")

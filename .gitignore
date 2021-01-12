@@ -3,11 +3,10 @@ codes/pyae.py
 codes/test.tex
 codes/test.lz
 codes/test-decoded.tex
+codes/notes*
 
 crypto/encrypt.exe
-crypto/addresses1.p
-crypto/addresses2.p
-crypto/submatches.p
+crypto/addresses*
 crypto/dictionary_words.txt
 crypto/top1000_words.txt
 

@@ -5,28 +5,77 @@ import pickle
 
 
 class PPMDecoder:
-    def __init__(self, freq_table=None, max_freq=256):
+    def __init__(self, max_freq=256):
         self.max_freq = max_freq
         self.m = 10
         self.e3 = 0
+
         self.low = 0
         self.high = 0
         for h in range(self.m):
             self.high += 2 ** h
 
-        if freq_table is None:
-            self.freq_table = [n for n in range(self.max_freq + 1)]
-        else:
-            self.freq_table = freq_table
-
         self.N = 4
         self.D = [{} for _ in range(self.N + 1)]
+        self.freq_table = self.make_freq_table()
+
         self.start = 0
         self.full_tag = ''
         self.binary_tag = ''
         self.int_tag = 0
         self.EOF = False
         self.output = []
+
+    def make_freq_table(self):
+        distribution = [1] * self.max_freq
+
+        for i in range(len(distribution)):
+            if 0 <= i <= 31:
+                # 0-31 is level 4
+                distribution[i] = math.floor(math.exp(0.5 * 2))
+            elif 32 <= i <= 47:
+                # 32 - 47 is level 3
+                distribution[i] = math.floor(math.exp(0.5 * 3))
+            elif 48 <= i <= 57:
+                # 48 - 57 is level 3
+                distribution[i] = math.floor(math.exp(0.5 * 3))
+            elif 58 <= i <= 64:
+                # 58 - 64 is level 4
+                distribution[i] = math.floor(math.exp(0.5 * 2))
+            elif 65 <= i <= 90:
+                # 65 - 90 is level 2
+                distribution[i] = math.floor(math.exp(0.5 * 4))
+            elif 91 <= i <= 96:
+                # 91 - 96 is level 5
+                distribution[i] = math.floor(math.exp(0.5 * 1))
+            elif 97 <= i <= 122:
+                # 97 - 122 is level 1
+                distribution[i] = math.floor(math.exp(0.5 * 5))
+            elif 123 <= i <= 126:
+                # 123 - 126 is level 4
+                distribution[i] = math.floor(math.exp(0.5 * 2))
+            elif 127 <= i <= 160:
+                # 127 - 160 is level 4
+                distribution[i] = math.floor(math.exp(0.5 * 2))
+            elif 161 <= i <= 191:
+                # 161 - 191 is level 5
+                distribution[i] = math.floor(math.exp(0.5 * 1))
+            elif 192 <= i <= 255:
+                # 192 - 255 is level 5
+                distribution[i] = math.floor(math.exp(0.5 * 1))
+
+        cum_distribution = [0]
+        for j in range(len(distribution)):
+            value = cum_distribution[j] + distribution[j]
+            cum_distribution.append(value)
+
+        self.max_freq = cum_distribution[-1]
+
+        print("Cumulative frequency table:")
+        print("   length =", len(cum_distribution))
+        print("   values =", cum_distribution)
+
+        return cum_distribution
 
     def printD(self):
         print("Data table D:")

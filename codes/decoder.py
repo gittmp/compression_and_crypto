@@ -366,8 +366,8 @@ if extension != ".lz":
 with open(file, 'rb') as f:
     encoding = pickle.load(f)
 
-print("Encoding:", encoding[:25])
-print("Type:", type(encoding))
+# print("Encoding:", encoding[:25])
+# print("Type:", type(encoding))
 
 decoder = PPMDecoder()
 message, info = decoder.full_decoding(encoding)

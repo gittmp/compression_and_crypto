@@ -103,11 +103,6 @@ class PPMEncoder:
                         context = str([byt for byt in sequence[b - order:b]])
                         # print("existing context = ", context)
 
-                    # try:
-                    #     # print("found context: D[{}][{}] = {}".format(order, context, self.D[order][context]))
-                    # except KeyError:
-                    #     # print("context not found in D[{}]".format(order))
-
                     probabilities, excluded = self.ppm_step(str(byte), order, context, excluded)
                     low_prob = probabilities['l_prob']
                     high_prob = probabilities['h_prob']
@@ -149,9 +144,9 @@ class PPMEncoder:
             # print("Bounds = [{},{}), new low = {}, new high = {}".format(l_freq, h_freq, self.low, self.high))
 
         if self.low >= self.high:
-            print("\noh no low and high are equal (or incorrect order) eeeeek")
-            print("self.low = {}, self.high = {}".format(self.low, self.high))
-            print("restarting program")
+            # print("\noh no low and high are equal (or incorrect order) eeeeek")
+            # print("self.low = {}, self.high = {}".format(self.low, self.high))
+            # print("restarting program")
             return False
 
         l = format(self.low).zfill(self.m)
@@ -321,8 +316,8 @@ encoding, info = encoder.full_encoding(message)
 print("\nFinal value of self.m = {}".format(encoder.m))
 # encoding = format(encoder.m, 'b').zfill(8) + encoding
 
-print("Encoding:", encoding[:25])
-print("Type:", type(encoding))
+# print("Encoding:", encoding[:25])
+# print("Type:", type(encoding))
 
 with open(file_name + '.lz', 'wb') as file:
     encoding = format(14, 'b').zfill(8) + encoding

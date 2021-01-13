@@ -21,43 +21,69 @@ class PPMEncoder:
         self.freq_table = self.make_freq_table()
         self.output = []
 
-    def make_freq_table(self):
+        self.counts = [0] * 11
+
+    def count(self, i):
+        if 0 <= i <= 31:
+            self.counts[0] += 1
+        elif 32 <= i <= 47:
+            self.counts[1] += 1
+        elif 48 <= i <= 57:
+            self.counts[2] += 1
+        elif 58 <= i <= 64:
+            self.counts[3] += 1
+        elif 65 <= i <= 90:
+            self.counts[4] += 1
+        elif 91 <= i <= 96:
+            self.counts[5] += 1
+        elif 97 <= i <= 122:
+            self.counts[6] += 1
+        elif 123 <= i <= 126:
+            self.counts[7] += 1
+        elif 127 <= i <= 160:
+            self.counts[8] += 1
+        elif 161 <= i <= 191:
+            self.counts[9] += 1
+        elif 192 <= i <= 255:
+            self.counts[10] += 1
+
+    def make_freq_table(self, s=0.67):
         distribution = [1] * self.max_freq
 
         for i in range(len(distribution)):
             if 0 <= i <= 31:
-                # 0-31 is level 4
-                distribution[i] = math.floor(math.exp(0.5 * 2))
+                # 0-31 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 32 <= i <= 47:
-                # 32 - 47 is level 3
-                distribution[i] = math.floor(math.exp(0.5 * 3))
+                # 32 - 47 is level 4
+                distribution[i] = math.floor(math.exp(s * 4))
             elif 48 <= i <= 57:
                 # 48 - 57 is level 3
-                distribution[i] = math.floor(math.exp(0.5 * 3))
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 58 <= i <= 64:
-                # 58 - 64 is level 4
-                distribution[i] = math.floor(math.exp(0.5 * 2))
+                # 58 - 64 is level 2
+                distribution[i] = math.floor(math.exp(s * 2))
             elif 65 <= i <= 90:
-                # 65 - 90 is level 2
-                distribution[i] = math.floor(math.exp(0.5 * 4))
+                # 65 - 90 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 91 <= i <= 96:
-                # 91 - 96 is level 5
-                distribution[i] = math.floor(math.exp(0.5 * 1))
+                # 91 - 96 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 97 <= i <= 122:
-                # 97 - 122 is level 1
-                distribution[i] = math.floor(math.exp(0.5 * 5))
+                # 97 - 122 is level 5
+                distribution[i] = math.floor(math.exp(s * 5))
             elif 123 <= i <= 126:
-                # 123 - 126 is level 4
-                distribution[i] = math.floor(math.exp(0.5 * 2))
+                # 123 - 126 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 127 <= i <= 160:
-                # 127 - 160 is level 4
-                distribution[i] = math.floor(math.exp(0.5 * 2))
+                # 127 - 160 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
             elif 161 <= i <= 191:
-                # 161 - 191 is level 5
-                distribution[i] = math.floor(math.exp(0.5 * 1))
+                # 161 - 191 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
             elif 192 <= i <= 255:
-                # 192 - 255 is level 5
-                distribution[i] = math.floor(math.exp(0.5 * 1))
+                # 192 - 255 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
 
         cum_distribution = [0]
         for j in range(len(distribution)):
@@ -68,14 +94,10 @@ class PPMEncoder:
 
         print("Cumulative frequency table:")
         print("   length =", len(cum_distribution))
+        print("   max freq =", self.max_freq)
         print("   values =", cum_distribution)
 
         return cum_distribution
-
-    def printD(self):
-        print("Data table D:")
-        for p in range(len(self.D)):
-            print(self.D[p])
 
     def encode(self, sequence):
         byte_count = 0
@@ -85,6 +107,8 @@ class PPMEncoder:
             b += 1
             byte_count += 1
             byte = sequence[b]
+
+            # self.count(byte)
 
             order = self.N
             excluded = []
@@ -113,7 +137,8 @@ class PPMEncoder:
                     if not result:
                         self.m += 1
                         self.reset()
-                        print("increasing value of self.m to {}".format(self.m))
+                        self.counts = [0] * 11
+                        # print("increasing value of self.m to {}".format(self.m))
                         byte_count = 0
                         b = -1
                         break
@@ -303,9 +328,6 @@ with open(file, 'rb') as f:
 encoder = PPMEncoder()
 encoding, info = encoder.full_encoding(message)
 
-# print()
-# encoder.printD()
-
 # print("\ncompressing sequence:", message)
 # print("input file size:", info[2])
 # print("output file size:", info[1])
@@ -313,8 +335,8 @@ encoding, info = encoder.full_encoding(message)
 
 # print("\nencoding:", encoding)
 
-print("\nFinal value of self.m = {}".format(encoder.m))
-# encoding = format(encoder.m, 'b').zfill(8) + encoding
+print("\nFinal value of self.m = {}\n".format(encoder.m))
+# print("\nCOUNTS = {}\n".format(encoder.counts))
 
 # print("Encoding:", encoding[:25])
 # print("Type:", type(encoding))

@@ -26,43 +26,43 @@ class PPMDecoder:
         self.EOF = False
         self.output = []
 
-    def make_freq_table(self):
+    def make_freq_table(self, s=0.67):
         distribution = [1] * self.max_freq
 
         for i in range(len(distribution)):
             if 0 <= i <= 31:
-                # 0-31 is level 4
-                distribution[i] = math.floor(math.exp(0.5 * 2))
+                # 0-31 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 32 <= i <= 47:
-                # 32 - 47 is level 3
-                distribution[i] = math.floor(math.exp(0.5 * 3))
+                # 32 - 47 is level 4
+                distribution[i] = math.floor(math.exp(s * 4))
             elif 48 <= i <= 57:
                 # 48 - 57 is level 3
-                distribution[i] = math.floor(math.exp(0.5 * 3))
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 58 <= i <= 64:
-                # 58 - 64 is level 4
-                distribution[i] = math.floor(math.exp(0.5 * 2))
+                # 58 - 64 is level 2
+                distribution[i] = math.floor(math.exp(s * 2))
             elif 65 <= i <= 90:
-                # 65 - 90 is level 2
-                distribution[i] = math.floor(math.exp(0.5 * 4))
+                # 65 - 90 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 91 <= i <= 96:
-                # 91 - 96 is level 5
-                distribution[i] = math.floor(math.exp(0.5 * 1))
+                # 91 - 96 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 97 <= i <= 122:
-                # 97 - 122 is level 1
-                distribution[i] = math.floor(math.exp(0.5 * 5))
+                # 97 - 122 is level 5
+                distribution[i] = math.floor(math.exp(s * 5))
             elif 123 <= i <= 126:
-                # 123 - 126 is level 4
-                distribution[i] = math.floor(math.exp(0.5 * 2))
+                # 123 - 126 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
             elif 127 <= i <= 160:
-                # 127 - 160 is level 4
-                distribution[i] = math.floor(math.exp(0.5 * 2))
+                # 127 - 160 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
             elif 161 <= i <= 191:
-                # 161 - 191 is level 5
-                distribution[i] = math.floor(math.exp(0.5 * 1))
+                # 161 - 191 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
             elif 192 <= i <= 255:
-                # 192 - 255 is level 5
-                distribution[i] = math.floor(math.exp(0.5 * 1))
+                # 192 - 255 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
 
         cum_distribution = [0]
         for j in range(len(distribution)):
@@ -73,14 +73,10 @@ class PPMDecoder:
 
         print("Cumulative frequency table:")
         print("   length =", len(cum_distribution))
+        print("   max freq =", self.max_freq)
         print("   values =", cum_distribution)
 
         return cum_distribution
-
-    def printD(self):
-        print("Data table D:")
-        for p in range(len(self.D)):
-            print(self.D[p])
 
     def extract_m(self, full_tag):
         self.m = int(full_tag[:8], 2)
@@ -371,9 +367,6 @@ with open(file, 'rb') as f:
 
 decoder = PPMDecoder()
 message, info = decoder.full_decoding(encoding)
-
-# print()
-# decoder.printD()
 
 # print("Input sequence:", encoding)
 # print("Input file size:", info[0])

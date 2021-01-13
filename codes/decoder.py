@@ -15,7 +15,7 @@ class PPMDecoder:
         for h in range(self.m):
             self.high += 2 ** h
 
-        self.N = 4
+        self.N = 6
         self.D = [{} for _ in range(self.N + 1)]
         self.freq_table = self.make_freq_table()
 
@@ -74,7 +74,7 @@ class PPMDecoder:
         print("Cumulative frequency table:")
         print("   length =", len(cum_distribution))
         print("   max freq =", self.max_freq)
-        print("   values =", cum_distribution)
+        # print("   values =", cum_distribution)
 
         return cum_distribution
 
@@ -143,10 +143,6 @@ class PPMDecoder:
                             # if PPM found the correct byte:
                             if found:
                                 # print("Found byte = {}".format(symbol))
-                                if not (0 <= int(symbol) < 256):
-                                    print("\nERROR, decoded symbol invalid:", symbol)
-                                    exit(1)
-
                                 # backtrack update PPM table orders n -> self.N given seen contexts/symbol
                                 self.backtrack_update(byte_count, order, str(symbol))
 
@@ -230,11 +226,15 @@ class PPMDecoder:
             return False, exclusion_list, "esc"
         # if PPM found the correct byte:
         else:
-            # add symbol to output symbols
-            self.output.append(int(symbol))
+            if not (0 <= int(symbol) < 256):
+                print("\nERROR, decoded symbol invalid:", symbol)
+                exit(1)
+            else:
+                # add symbol to output symbols
+                self.output.append(int(symbol))
 
-            # instruct decoder that correct symbol has been find
-            return True, [], symbol
+                # instruct decoder that correct symbol has been find
+                return True, [], symbol
 
     def order_minus1_update(self):
         self.int_tag = int(self.binary_tag, 2)

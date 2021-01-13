@@ -16,7 +16,7 @@ class PPMEncoder:
         for h in range(self.m):
             self.high += 2 ** h
 
-        self.N = 4
+        self.N = 6
         self.D = [{} for _ in range(self.N + 1)]
         self.freq_table = self.make_freq_table()
         self.output = []
@@ -95,7 +95,7 @@ class PPMEncoder:
         print("Cumulative frequency table:")
         print("   length =", len(cum_distribution))
         print("   max freq =", self.max_freq)
-        print("   values =", cum_distribution)
+        # print("   values =", cum_distribution)
 
         return cum_distribution
 

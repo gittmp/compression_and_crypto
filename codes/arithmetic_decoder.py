@@ -1,127 +1,107 @@
-import os
 import sys
+import os
 import math
 import pickle
 
 
-def find_bounds(t_bin, l_bin, h_bin, total):
-    print("1) finding interval: binary tag = {}, low = {}, high = {}".format(t_bin, l_bin, h_bin))
+class ArithmeticDecoder:
+    def __init__(self, freq_table=None, max_freq=256):
+        self.max_freq = max_freq
+        self.m = 8
+        self.e3 = 0
+        self.low = 0
+        self.high = 255
 
-    tg = int(t_bin, 2)
-    l = int(l_bin, 2)
-    h = int(h_bin, 2)
-    low_bound, high_bound = 0, 0
+        if freq_table is None:
+            self.freq_table = [n for n in range(self.max_freq + 1)]
+        else:
+            self.freq_table = freq_table
 
-    print(" a. int tag = {}, int low = {}, int high = {}".format(tg, l, h))
+    def decode(self, full_tag):
+        output = bytearray()
+        start = 0
+        tag_bin = full_tag[start:start + self.m]
 
-    # find frequency value
-    frequency = math.floor(((tg - l + 1) * total - 1) / (h - l + 1))
+        while tag_bin != '':
+            tag = int(tag_bin, 2)
 
-    print(" b. decoded frequency = (({} - {} + 1) * {} - 1) / ({} - {} + 1) = {}".format(tg, l, total, h, l, frequency))
+            frequency = (((tag - self.low + 1) * self.max_freq) - 1) / (self.high - self.low + 1)
+            bound = 0
 
-    # this is where you check what interval correlated to p
-    # keys = list(table.keys())
-    j = 0
+            while self.freq_table[bound] <= frequency and bound < self.max_freq:
+                bound += 1
 
-    while frequency >= high_bound:
-        low_bound = high_bound
-        j += 1
-        high_bound = j
-        # low_bound = high_bound
-        # high_bound = table[keys[j]]
+            if bound >= self.max_freq:
+                print("Decoding frequency bound not found")
+                exit(1)
 
-    # symb = keys[j]
-    symb = low_bound
+            output.append(bound - 1)
 
-    print(" c. found symbol = {}, interval = [{}/{}, {}/{}) = [{}, {})".format(repr(symb), low_bound, total, high_bound, total, low_bound/total, high_bound/total))
+            low_prev = self.low
+            high_prev = self.high
 
-    low_bound = low_bound / total
-    high_bound = high_bound / total
+            self.low = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[bound - 1]) / self.max_freq)
+            self.high = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[bound]) / self.max_freq) - 1
 
-    return low_bound, high_bound, symb
+            l = format(self.low, 'b').zfill(self.m)
+            h = format(self.high, 'b').zfill(self.m)
 
+            while l[0] == h[0]:
+                l = l[1:] + '0'
+                h = h[1:] + '1'
 
-def update_lh(t_bin, rem_tag, l_bin, h_bin, l_prob, h_prob):
-    print("2) updating low and high bounds")
+                self.low = int(l, 2)
+                self.high = int(h, 2)
 
-    l_old = int(l_bin, 2)
-    h_old = int(h_bin, 2)
+                start += 1
 
-    l_new = l_old + math.floor((h_old - l_old + 1) * l_prob)
-    h_new = l_old + math.floor((h_old - l_old + 1) * h_prob) - 1
+            while l[1] == '1' and h[1] == '0':
+                l = l[0] + l[2:] + '0'
+                h = h[0] + h[2:] + '1'
 
-    print(" a. low prob = {}, high prob = {}".format(l_prob, h_prob))
-    print(" b. int l_old -> l_new: {} -> {}".format(l_old, l_new))
-    print(" c. int h_old -> h_new: {} -> {}".format(h_old, h_new))
+                self.low = int(l, 2)
+                self.high = int(h, 2)
 
-    l_new = format(l_new, 'b')
-    l = l_new + '0' * (m - len(l_new))
-    h_new = format(h_new, 'b')
-    h = h_new + '1' * (m - len(h_new))
+                full_tag = full_tag[:start] + str(1 - int(full_tag[start + 1])) + full_tag[start + 2:]
 
-    print(" d. binary versions: l = {}, h = {}".format(l_new, h_new))
-    print(" e. checking conditions...")
+            tag_bin = full_tag[start:start + self.m]
 
-    while ((l[0] == h[0]) or (l[1] == '1' and h[1] == '0')) is True:
-        if l[0] == h[0]:
-            l = l[1:] + '0'
-            h = h[1:] + '1'
-            t_bin = t_bin[1:] + rem_tag[0]
-            rem_tag = rem_tag[1:]
-            print("  i. e1/e2 condition: low = {}, high = {}, tag = {}".format(l, h, t_bin))
+        output = bytes(output)[:-1]
 
-        if l[1] == '1' and h[1] == '0':
-            l = '0' + l[2:] + '0'
-            h = '1' + h[2:] + '1'
+        return output
 
-            t_bin = t_bin[1:] + rem_tag[0]
-            rem_tag = rem_tag[1:]
-            complement = '0' if t_bin[0] == '1' else '1'
-            t_bin = complement + t_bin[1:]
-            print("  ii. e3 condition: low = {}, high = {}, tag = {}".format(l, h, t_bin))
+    def output_data(self, seq, output):
+        enc_size = len(seq) / self.m
+        dec_size = len(output)
+        ratio = dec_size / enc_size
 
-    print(" f. Final updated binary values: l = {}, h = {}, tag = {}".format(l, h, t_bin), end='\n\n')
-    return l, h, t_bin, rem_tag
+        return enc_size, dec_size, ratio
 
+    def full_decoding(self, sequence):
+        decoding = self.decode(sequence)
+        data = self.output_data(sequence, decoding)
 
-max_char = 128
-# table_vals = {chr(v): v+1 for v in range(128)}
-# table = {'': 0}
-# table.update(table_vals)
-# print("char table:", table, end='\n\n')
+        return decoding, data
+
 
 file = sys.argv[1]
 file_name, extension = os.path.splitext(file)
 print("File name: ", file_name)
 
-# change to .tex in final implementation
 if extension != ".lz":
     print("Not a compatible compressed file!")
     exit(1)
 
 with open(file, 'rb') as f:
-    remaining_tag = pickle.load(f)
+    encoding = pickle.load(f)
 
-m = 8
-current_tag = remaining_tag[:m]
-remaining_tag = remaining_tag[m:]
+decoder = ArithmeticDecoder()
+message, info = decoder.full_decoding(encoding)
 
-outputs = []
-low = '0' * m
-high = '1' * m
-sequence = ""
-length = 13
+print("Input sequence:", encoding)
+print("Input file size:", info[0])
+print("Output file size:", info[1])
+print("Output sequence:", message)
 
-for count in range(length):
-    print("\n   DECODING SYMBOL INDEXED {}".format(count))
-
-    low_prob, high_prob, symbol = find_bounds(current_tag, low, high, max_char)
-
-    low, high, current_tag, remaining_tag = update_lh(t_bin=current_tag, rem_tag=remaining_tag,
-                                                      l_bin=low, h_bin=high,
-                                                      l_prob=low_prob, h_prob=high_prob)
-
-    sequence += chr(symbol)
-
-for char in sequence:
-    print(repr(char), end='')
+with open(file_name + "-decoded.tex", 'wb') as f:
+    f.write(message)

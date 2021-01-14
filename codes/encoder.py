@@ -1,7 +1,6 @@
 import sys
 import os
 import math
-import pickle
 
 
 class PPMEncoder:
@@ -47,7 +46,7 @@ class PPMEncoder:
         elif 192 <= i <= 255:
             self.counts[10] += 1
 
-    def make_freq_table(self, s=0.67):
+    def make_freq_table(self, s=0):
         distribution = [1] * self.max_freq
 
         for i in range(len(distribution)):
@@ -338,14 +337,15 @@ encoding, info = encoder.full_encoding(message)
 
 # print("\nencoding:", encoding)
 
-print("\nFinal value of self.m = {}\n".format(encoder.m))
+# print("\nFinal value of self.m = {}".format(encoder.m))
 # print("\nCOUNTS = {}\n".format(encoder.counts))
 
 # print("Encoding:", encoding[:25])
 # print("Type:", type(encoding))
 
-with open(file_name + '.lz', 'wb') as file:
-    encoding = format(14, 'b').zfill(8) + encoding
-    pickle.dump(encoding, file)
+with open(file_name + '.lz', 'w') as file:
+    m_val = format(encoder.m, 'b').zfill(8)
+    encoding = m_val + encoding
+    file.write(encoding)
 
 print("\nENCODING COMPLETE!!\n")

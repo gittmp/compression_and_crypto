@@ -1,7 +1,6 @@
 import sys
 import os
 import math
-import pickle
 
 
 class PPMDecoder:
@@ -26,7 +25,7 @@ class PPMDecoder:
         self.EOF = False
         self.output = []
 
-    def make_freq_table(self, s=0.67):
+    def make_freq_table(self, s=0):
         distribution = [1] * self.max_freq
 
         for i in range(len(distribution)):
@@ -88,10 +87,11 @@ class PPMDecoder:
 
     def decode(self, input_tag):
         self.extract_m(input_tag)
-
         self.binary_tag = self.full_tag[:self.m]
         self.int_tag = int(self.binary_tag, 2)
         byte_count = 0
+
+        print("decoded value of self.m = {}\n".format(self.m))
 
         while self.binary_tag != '' and self.EOF is False:
 
@@ -191,7 +191,7 @@ class PPMDecoder:
         self.int_tag = int(self.binary_tag, 2)
 
         # calculate frequency value (based on sum of non-zero entries)
-        print("frequency = ((({} - {} + 1) * {}) - 1) / ({} - {} + 1)".format(self.int_tag, self.low, sum_values, self.high, self.low))
+        # print("frequency = ((({} - {} + 1) * {}) - 1) / ({} - {} + 1)".format(self.int_tag, self.low, sum_values, self.high, self.low))
         frequency = (((self.int_tag - self.low + 1) * sum_values) - 1) / (self.high - self.low + 1)
 
         # find low prob and high prob using PPM table, and associated symbol
@@ -363,8 +363,8 @@ if extension != ".lz":
     print("Not a compatible compressed file!")
     exit(1)
 
-with open(file, 'rb') as f:
-    encoding = pickle.load(f)
+with open(file, 'r') as file:
+    encoding = file.read()
 
 # print("Encoding:", encoding[:25])
 # print("Type:", type(encoding))

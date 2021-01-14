@@ -8,7 +8,7 @@ class PPMEncoder:
 
     def __init__(self, max_freq=256):
         self.max_freq = max_freq
-        self.m = 10
+        self.m = 8
         self.e3 = 0
 
         self.low = 0
@@ -119,7 +119,10 @@ class PPMEncoder:
                 if order > -1:
 
                     if b < order:
-                        byts = ["-"] * (order - b)
+                        # byts = ["-"] * (order - b)
+                        char_list = [116, 104, 101, 32, 116, 104]
+                        byts = char_list[:order - b]
+
                         byts.extend([byt for byt in sequence[:b]])
                         context = str(byts)
                         # print("made context = ", context)

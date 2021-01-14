@@ -7,7 +7,7 @@ import pickle
 class PPMDecoder:
     def __init__(self, max_freq=256):
         self.max_freq = max_freq
-        self.m = 10
+        self.m = 8
         self.e3 = 0
 
         self.low = 0
@@ -105,13 +105,14 @@ class PPMDecoder:
                 if order > -1:
                     # find corresponding context to current order
                     if len(self.output) < order:
-                        byts = ["-"] * (order - len(self.output))
+                        # byts = ["-"] * (order - len(self.output))
+                        char_list = [116, 104, 101, 32, 116, 104]
+                        byts = char_list[:order - len(self.output)]
+
                         byts.extend(self.output)
                         context = str(byts)
-                        # print("made context =", context)
                     else:
                         context = str(self.output[byte_count - order - 1:])
-                        # print("existing context =", context)
 
                     # search current order for that context
                     # if not found:
@@ -190,8 +191,8 @@ class PPMDecoder:
         self.int_tag = int(self.binary_tag, 2)
 
         # calculate frequency value (based on sum of non-zero entries)
+        print("frequency = ((({} - {} + 1) * {}) - 1) / ({} - {} + 1)".format(self.int_tag, self.low, sum_values, self.high, self.low))
         frequency = (((self.int_tag - self.low + 1) * sum_values) - 1) / (self.high - self.low + 1)
-        # print("frequency = ((({} - {} + 1) * {}) - 1) / ({} - {} + 1) = {}".format(self.int_tag, self.low, sum_values, self.high, self.low, frequency))
 
         # find low prob and high prob using PPM table, and associated symbol
         keys = [k for k in self.D[n][c].keys() if k not in exclusion_list]
@@ -299,7 +300,10 @@ class PPMDecoder:
             if n == 0:
                 c = '[]'
             elif len(current_output) <= n:
-                byts = ["-"] * (n - len(current_output))
+                # byts = ["-"] * (n - len(current_output))
+                char_list = [116, 104, 101, 32, 116, 104]
+                byts = char_list[:n - len(current_output)]
+
                 byts.extend(current_output)
                 c = str(byts)
             else:

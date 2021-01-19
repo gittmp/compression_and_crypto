@@ -317,9 +317,11 @@ class PPMEncoder:
 file = sys.argv[1]
 file_name, extension = os.path.splitext(file)
 print("File name: ", file_name)
+print("File:", file)
 
 # change to .tex in final implementation
 if extension != ".tex":
+    print("Extension:", extension)
     print("Not a LaTeX file!")
     exit(1)
 

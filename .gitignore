@@ -1,9 +1,6 @@
 codes/testEncoderDecoder.py
 codes/pyae.py
-codes/test.tex
-codes/test.lz
-codes/test-decoded.tex
-codes/notes*
+codes/tests/**
 codes/Report/report.aux
 codes/Report/report.log
 codes/Report/report.synctex.gz

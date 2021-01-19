@@ -56,7 +56,7 @@ class PPMEncoder:
             # 192 - 255 is level 1
             return 1
 
-    def make_freq_table(self, s=0):
+    def make_freq_table(self, s=0.55):
         distribution = [1] * self.max_freq
 
         for b in range(len(distribution)):

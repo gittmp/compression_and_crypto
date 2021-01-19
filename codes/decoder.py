@@ -61,7 +61,7 @@ class PPMDecoder:
             # 192 - 255 is level 1
             return 1
 
-    def make_freq_table(self, s=0):
+    def make_freq_table(self, s=0.55):
         distribution = [1] * self.max_freq
 
         for b in range(len(distribution)):
@@ -134,7 +134,7 @@ class PPMDecoder:
                             # if PPM found the correct byte:
                             if found:
                                 # backtrack update PPM table orders n -> self.N given seen contexts/symbol
-                                self.backtrack_update(byte_count, order, str(symbol))
+                                self.backtrack_update(order, str(symbol))
 
                                 if symbol == 4:
                                     self.EOF = True
@@ -156,7 +156,7 @@ class PPMDecoder:
                         exit(1)
 
                     # backtrack update PPM table orders 0 -> self.N given seen contexts/symbol
-                    self.backtrack_update(byte_count, order, str(symbol))
+                    self.backtrack_update(order, str(symbol))
 
                     if symbol == 4:
                         self.EOF = True
@@ -265,7 +265,7 @@ class PPMDecoder:
     def increment(self, symbol):
         return 1
 
-    def backtrack_update(self, current_position, n, symb):
+    def backtrack_update(self, n, symb):
         n = max(n, 0)
         current_output = self.output[:-1]
 

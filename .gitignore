@@ -4,11 +4,18 @@ codes/test.tex
 codes/test.lz
 codes/test-decoded.tex
 codes/notes*
+codes/Report/report.aux
+codes/Report/report.log
+codes/Report/report.synctex.gz
 
 crypto/encrypt.exe
 crypto/addresses*
 crypto/dictionary_words.txt
 crypto/top1000_words.txt
+crypto/che_len*
+crypto/Report/attack plan.aux
+crypto/Report/attack plan.log
+crypto/Report/attack plan.synctex.gz
 
 .DS_Store
 spec.pdf

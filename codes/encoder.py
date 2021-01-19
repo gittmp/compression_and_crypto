@@ -1,241 +1,353 @@
-# Usage: python encoder.py myfile.tex
-# encodes a lossless compression of a LaTeX file
 import sys
 import os
 import math
 
 
-def get_file_input():
-    file_name = sys.argv[1]
-    name, extension = os.path.splitext(file_name)
-    print("File name: ", name)
+class PPMEncoder:
 
-    # change to .tex in final implementation
-    if extension != ".txt":
-        print("Not a LaTeX file!")
-        exit()
+    def __init__(self, max_freq=256):
+        self.max_freq = max_freq
+        self.m = 8
+        self.e3 = 0
 
-    f = open(file_name, 'r')
-    print("File: ", f)
+        self.low = 0
+        self.high = 0
+        for h in range(self.m):
+            self.high += 2 ** h
 
-    if f.mode != 'r':
-        print("Error")
-        exit()
+        self.N = 6
+        self.D = [{} for _ in range(self.N + 1)]
+        self.freq_table = self.make_freq_table()
+        self.output = []
 
-    file_contents = f.read()
+        self.counts = [0] * 11
 
-    return file_contents, name
+    def count(self, i):
+        if 0 <= i <= 31:
+            self.counts[0] += 1
+        elif 32 <= i <= 47:
+            self.counts[1] += 1
+        elif 48 <= i <= 57:
+            self.counts[2] += 1
+        elif 58 <= i <= 64:
+            self.counts[3] += 1
+        elif 65 <= i <= 90:
+            self.counts[4] += 1
+        elif 91 <= i <= 96:
+            self.counts[5] += 1
+        elif 97 <= i <= 122:
+            self.counts[6] += 1
+        elif 123 <= i <= 126:
+            self.counts[7] += 1
+        elif 127 <= i <= 160:
+            self.counts[8] += 1
+        elif 161 <= i <= 191:
+            self.counts[9] += 1
+        elif 192 <= i <= 255:
+            self.counts[10] += 1
 
+    def make_freq_table(self, s=0):
+        distribution = [1] * self.max_freq
 
-def output_file(encoded_seq, file_name):
-    f = open(file_name + ".lz", "w")
-    encoded_seq = str(encoded_seq)
-    f.write(encoded_seq)
-    f.close()
+        for i in range(len(distribution)):
+            if 0 <= i <= 31:
+                # 0-31 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
+            elif 32 <= i <= 47:
+                # 32 - 47 is level 4
+                distribution[i] = math.floor(math.exp(s * 4))
+            elif 48 <= i <= 57:
+                # 48 - 57 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
+            elif 58 <= i <= 64:
+                # 58 - 64 is level 2
+                distribution[i] = math.floor(math.exp(s * 2))
+            elif 65 <= i <= 90:
+                # 65 - 90 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
+            elif 91 <= i <= 96:
+                # 91 - 96 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
+            elif 97 <= i <= 122:
+                # 97 - 122 is level 5
+                distribution[i] = math.floor(math.exp(s * 5))
+            elif 123 <= i <= 126:
+                # 123 - 126 is level 3
+                distribution[i] = math.floor(math.exp(s * 3))
+            elif 127 <= i <= 160:
+                # 127 - 160 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
+            elif 161 <= i <= 191:
+                # 161 - 191 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
+            elif 192 <= i <= 255:
+                # 192 - 255 is level 1
+                distribution[i] = math.floor(math.exp(s * 1))
 
+        cum_distribution = [0]
+        for j in range(len(distribution)):
+            value = cum_distribution[j] + distribution[j]
+            cum_distribution.append(value)
 
-# PPM METHOD B: esc count = no. distinct symbols in context dict
-# & each symbol's count starts from the 2nd observation
-def ppm_step(symbol, n, context, exclusion_list):
-    if context in D[n].keys():
-        sum_values = sum([D[n][context][k] for k in D[n][context].keys() if k not in exclusion_list])
-        print("1) context in D with symbols: D[{}]['{}'] = {}, excluded = {}".format(n, context, D[n][context], exclusion_list))
+        self.max_freq = cum_distribution[-1]
 
-        # if there are non-zero values in the context, use them to encode symbol or esc
-        keys = D[n][context].keys()
-        if sum_values > 0:
-            print("2) non-zero context values found: sum_values = {}".format(sum_values))
+        print("Cumulative frequency table:")
+        print("   length =", len(cum_distribution))
+        print("   max freq =", self.max_freq)
+        # print("   values =", cum_distribution)
 
-            if symbol in keys and D[n][context][symbol] != 0:
+        return cum_distribution
 
-                prev_cum_prob, cum_prob = 0, 0
-                for key in keys:
-                    prev_cum_prob = cum_prob
-                    cum_prob += D[n][context][key]
-                    if key == symbol:
+    def encode(self, sequence):
+        byte_count = 0
+        b = -1
+
+        while b < len(sequence) - 1:
+            b += 1
+            byte_count += 1
+            byte = sequence[b]
+
+            # self.count(byte)
+
+            order = self.N
+            excluded = []
+            # print("\nBYTE NO. = {}, BYTE = {}".format(byte_count, byte))
+
+            while order > -2:
+                # print("ORDER =", order)
+                if order > -1:
+
+                    if b < order:
+                        # byts = ["-"] * (order - b)
+                        char_list = [116, 104, 101, 32, 116, 104]
+                        byts = char_list[:order - b]
+
+                        byts.extend([byt for byt in sequence[:b]])
+                        context = str(byts)
+                        # print("made context = ", context)
+                    else:
+                        context = str([byt for byt in sequence[b - order:b]])
+                        # print("existing context = ", context)
+
+                    probabilities, excluded = self.ppm_step(str(byte), order, context, excluded)
+                    low_prob = probabilities['l_prob']
+                    high_prob = probabilities['h_prob']
+                    total = probabilities['sum']
+
+                    result = self.encode_step(byte, order, low_prob, high_prob, total)
+
+                    if not result:
+                        self.m += 1
+                        self.reset()
+                        self.counts = [0] * 11
+                        # print("increasing value of self.m to {}".format(self.m))
+                        byte_count = 0
+                        b = -1
                         break
 
-                prev_cum_prob = prev_cum_prob / sum_values
-                cum_prob = cum_prob / sum_values
-
-                print("3) symbol found and non-zero, encode it: symbol = {}, low prob = {}, high prob = {}".format(symbol, prev_cum_prob, cum_prob))
-
-                D[n][context][symbol] += 1
-                out = {"symbol": symbol, "l_prob": prev_cum_prob, "h_prob": cum_prob}
-            else:
-                # if symbol not in keys (or symbol prob 0), encode esc symbol
-                exclusion_list.extend([k for k in keys if not (k == "esc" or k in exclusion_list or D[n][context][k] == 0)])
-
-                prev_cum_prob = 1 - (D[n][context]["esc"] / sum_values)
-                cum_prob = 1
-
-                if symbol in keys:
-                    # if symbol in keys, increment it and esc (as count must be zero)
-                    print("4) symbol count is zero, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_cum_prob, cum_prob))
-                    D[n][context][symbol] += 1
-                    D[n][context]["esc"] += 1
+                    if probabilities['symbol'] == byte:
+                        # print("breaking!")
+                        break
+                    else:
+                        order -= 1
                 else:
-                    # if symbol not in keys, add it
-                    print("5) symbol not in context, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_cum_prob, cum_prob))
-                    esc_count = D[n][context].pop("esc", 0)
-                    D[n][context][symbol] = 0
-                    D[n][context]["esc"] = esc_count
+                    # print("encoding in order -1, byte =", byte)
+                    self.encode_step(byte)
+                    break
 
-                out = {"symbol": "esc", "l_prob": prev_cum_prob, "h_prob": cum_prob}
+        return self.output, byte_count
+
+    def encode_step(self, byte, n=-1, l_freq=None, h_freq=None, total=None):
+        low_prev = self.low
+        high_prev = self.high
+
+        if n == -1:
+            self.low = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[byte]) / self.max_freq)
+            self.high = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[byte + 1]) / self.max_freq) - 1
+            # print("Bounds = [{},{}), new low = {}, new high = {}".format(self.freq_table[byte], self.freq_table[byte + 1], self.low, self.high))
         else:
-            # if all values in context section are zero, encode esc with probability interval 0 - 1
-            if symbol in keys:
-                print("6) all symbols, incl symbol, zero, escape: symbol = 'esc', low prob = 0, high prob = 1")
-                # if symbol in keys, increment it as count must be zero and increment sc to show there's a non-zero
-                D[n][context][symbol] += 1
-                D[n][context]["esc"] += 1
+            self.low = low_prev + math.floor(((high_prev - low_prev + 1) * l_freq) / total)
+            self.high = low_prev + math.floor(((high_prev - low_prev + 1) * h_freq) / total) - 1
+            # print("Bounds = [{},{}), new low = {}, new high = {}".format(l_freq, h_freq, self.low, self.high))
+
+        if self.low >= self.high:
+            # print("\noh no low and high are equal (or incorrect order) eeeeek")
+            # print("self.low = {}, self.high = {}".format(self.low, self.high))
+            # print("restarting program")
+            return False
+
+        l = format(self.low).zfill(self.m)
+        h = format(self.high).zfill(self.m)
+
+        while (l[0] == h[0]) or (l[1] == '1' and h[1] == '0'):
+            l = format(self.low, 'b').zfill(self.m)
+            h = format(self.high, 'b').zfill(self.m)
+
+            if l[0] == h[0]:
+                # e1/e2 condition
+                self.output.append(l[0])
+                e3_bit = '0' if l[0] == '1' else '1'
+
+                l = l[1:] + '0'
+                h = h[1:] + '1'
+                self.low = int(l, 2)
+                self.high = int(h, 2)
+
+                self.output.extend([e3_bit] * self.e3)
+                self.e3 = 0
+
+            elif l[1] == '1' and h[1] == '0':
+                l = l[0] + l[2:] + '0'
+                h = h[0] + h[2:] + '1'
+                self.low = int(l, 2)
+                self.high = int(h, 2)
+
+                self.e3 += 1
+
+        return True
+
+    def terminate_encoding(self, output):
+        l = format(self.low, 'b').zfill(self.m)
+
+        output.append(l[0])
+        output.extend(['1'] * self.e3)
+        output.append(l[1:])
+        outbits = "".join(output)
+
+        return outbits
+
+    def ppm_step(self, symbol, n, c, exclusion_list):
+        if c in self.D[n].keys():
+            sum_values = sum([self.D[n][c][k] for k in self.D[n][c].keys() if k not in exclusion_list])
+            # print("1) context in D with symbols: D[{}]['{}'] = {}, excluded = {}".format(n, context, self.[n][context], exclusion_list))
+
+            # if there are non-zero values in the context, use them to encode symbol or esc
+            keys = [k for k in self.D[n][c].keys() if k not in exclusion_list]
+            if sum_values > 0:
+                # print("2) non-zero context values found: sum_values = {}, excluded = {}".format(sum_values, exclusion_list))
+                # print("   table = {}".format(self.D[n][c]))
+
+                if symbol in keys and self.D[n][c][symbol] != 0:
+
+                    prev_cum_freq, cum_freq = 0, 0
+                    for key in keys:
+                        prev_cum_freq = cum_freq
+                        cum_freq += self.D[n][c][key]
+                        if key == symbol:
+                            break
+
+                    # print("3) symbol found and non-zero, encode it: symbol = {}, low prob = {}/{}, high prob = {}/{}".format(symbol, prev_cum_freq, sum_values, cum_freq, sum_values))
+
+                    self.D[n][c][symbol] += 1
+                    out = {"symbol": int(symbol), "l_prob": prev_cum_freq, "h_prob": cum_freq, "sum": sum_values}
+                else:
+                    # if symbol not in keys (or symbol prob 0), encode esc symbol
+                    exclusion_list.extend([k for k in keys if not (k == "esc" or k in exclusion_list or self.D[n][c][k] == 0)])
+
+                    prev_cum_freq, cum_freq = 0, 0
+                    for key in keys:
+                        prev_cum_freq = cum_freq
+                        cum_freq += self.D[n][c][key]
+                        if key == "esc":
+                            break
+
+                    if symbol in keys:
+                        # if symbol in keys, increment it and esc (as count must be zero)
+                        # print("4) symbol count is zero, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_cum_freq, cum_freq))
+                        self.D[n][c][symbol] += 1
+                        self.D[n][c]["esc"] += 1
+                    else:
+                        # if symbol not in keys, add it
+                        # print("5) symbol not in context, escape: symbol = 'esc', low prob = {}, high prob = {}".format(prev_cum_freq, cum_freq))
+                        esc_count = self.D[n][c].pop("esc", 0)
+                        self.D[n][c][symbol] = 0
+                        self.D[n][c]["esc"] = esc_count
+
+                    out = {"symbol": "esc", "l_prob": prev_cum_freq, "h_prob": cum_freq, "sum": sum_values}
             else:
-                print("7) all symbols zero, symbol never observed, escape: symbol = 'esc', low prob = 0, high prob = 1")
-                # if symbol not in keys, add it
-                esc_count = D[n][context].pop("esc", 0)
-                D[n][context][symbol] = 0
-                D[n][context]["esc"] = esc_count
+                # if all values in context section are zero, encode esc with probability interval 0 - 1
+                if symbol in keys:
+                    # print("6) all symbols, incl symbol, zero, escape: symbol = 'esc', low prob = 0, high prob = 1")
+                    # if symbol in keys, increment it as count must be zero and increment sc to show there's a non-zero
+                    self.D[n][c][symbol] += 1
+                    self.D[n][c]["esc"] += 1
+                else:
+                    # print("7) all symbols zero, symbol never observed, escape: symbol = 'esc', low prob = 0, high prob = 1")
+                    # if symbol not in keys, add it
+                    esc_count = self.D[n][c].pop("esc", 0)
+                    self.D[n][c][symbol] = 0
+                    self.D[n][c]["esc"] = esc_count
 
-            out = {"symbol": "esc", "l_prob": 0.0, "h_prob": 1.0}
-    else:
-        # if context not in D, add it and output esc
-        print("8) context never observed, escape: symbol = 'esc', low prob = 0, high prob = 1")
-        D[n][context] = {symbol: 0, "esc": 0}
-        out = {"symbol": "esc", "l_prob": 0.0, "h_prob": 1.0}
-
-    return out, exclusion_list
-
-
-def order_minus1(symbol):
-
-    char_code = ord(symbol)
-    prev_p = char_code / 128
-    p = (char_code + 1) / 128
-
-    print("9) order -1 context: p interval = [{}, {}), symbol = {}".format(prev_p, p, symbol))
-
-    out = {"symbol": symbol, "l_prob": prev_p, "h_prob": p}
-
-    return out
-
-
-def arithmetic_encoder(l_old_bin, h_old_bin, e3_count, m, ppm_output):
-    symbol = ppm_output["symbol"]
-    l_prob = ppm_output["l_prob"]
-    h_prob = ppm_output["h_prob"]
-    out = ''
-
-    l_old = int(l_old_bin, 2)
-    h_old = int(h_old_bin, 2)
-
-    print(" a. inputs: low = {} -> {}, high = {} -> {}, e3 count = {}, low prob = {}, high_prob = {}".format(l_old_bin, l_old, h_old_bin, h_old, e3_count, l_prob, h_prob))
-
-    l_new_bin = l_old + math.floor((h_old - l_old + 1) * l_prob)
-    h_new_bin = l_old + math.floor((h_old - l_old + 1) * h_prob) - 1
-
-    l_new = format(l_new_bin, 'b')
-    l = l_new + '0' * (m - len(l_new))
-    h_new = format(h_new_bin, 'b')
-    h = h_new + '1' * (m - len(h_new))
-
-    print(" b. new low and high: low = {} -> {} -> {}, high = {} -> {} -> {}".format(l_new_bin, l_new, l, h_new_bin, h_new, h))
-
-    while ((l[0] == h[0]) or (l[1] == '1' and h[1] == '0')) is True:
-        if l[1] == '1' and h[1] == '0':
-            print(" e3 condition")
-
-            l = '0' + l[2:] + '0'
-            h = '1' + h[2:] + '1'
-            e3_count += 1
-
-        if l[0] == h[0]:
-            print(" e1/e2 condition")
-
-            e3_bit = '0' if l[0] == '1' else '1'
-            out += l[0] + e3_bit * e3_count
-            e3_count = 0
-
-            l = l[1:] + '0'
-            h = h[1:] + '1'
-
-    print(" c. updates and outputs: l = {}, h = {}, output = {}".format(l, h, out), end='\n\n')
-
-    return {
-        "l": l,
-        "h": h,
-        "e3": e3_count,
-        "output": out
-    }
-
-
-def terminate_encoding(l, e3):
-    if e3 > 0:
-        msb = l[0]
-        e3_bit = '0' if msb == '1' else '1'
-        out = msb + e3_bit * e3 + l[1:]
-    else:
-        out = l
-    return out
-
-
-sequence, file = get_file_input()
-print("Sequence to encode:", sequence, end='\n\n')
-
-N = 4
-sequence = "-" * N + sequence
-D = [{} for i in range(N + 1)]
-outputs = []
-codeword = ''
-m = 9
-low = '0' * m
-high = '1' * m
-e3_counter = 0
-
-
-for i in range(N, len(sequence)):
-    n = N
-    symb = sequence[i]
-    excluded = []
-    symbol_outputs = []
-    code = ''
-
-    while n > -2:
-        context = sequence[i-n:i]
-
-        if n > -1:
-            output, excluded = ppm_step(symb, n, context, excluded)
-        else:  # n == -1
-            output = order_minus1(symb)
-
-        symbol_outputs.append((n, output))
-
-        if not (output["l_prob"] == 0.0 and output["h_prob"] == 1.0):
-            encoding = arithmetic_encoder(low, high, e3_counter, m, output)
-            low = encoding["l"]
-            high = encoding["h"]
-            e3_counter = encoding["e3"]
-            code += encoding["output"]
-
-        if output["symbol"] == symb:
-            if code != '':
-                codeword += code
-            outputs.append(symbol_outputs)
-            break
+                out = {"symbol": "esc", "l_prob": 0.0, "h_prob": 1.0, "sum": 1}
         else:
-            n -= 1
+            # if context not in D, add it and output esc
+            # print("8) context never observed, escape: symbol = 'esc', low prob = 0, high prob = 1")
+            self.D[n][c] = {symbol: 0, "esc": 0}
+            out = {"symbol": "esc", "l_prob": 0.0, "h_prob": 1.0, "sum": 1}
 
-terminal_code = terminate_encoding(low, e3_counter)
-codeword += terminal_code
+        return out, exclusion_list
 
-output_file(codeword, file)
+    def output_data(self, outbits, byte_count):
+        output_size = len(outbits) / self.m
+        ratio = byte_count / output_size
 
-# print("D =")
-# for i in range(N+1):
-#     print(D[i])
-#
-# print("\n\nOUTPUTS =")
-# for i in range(len(outputs)):
-#     print(outputs[i])
-#
-# print("\n\nSEQUENCE =", sequence[N:])
-print("ENCODING =", codeword)
+        return ratio, output_size
+
+    def reset(self):
+        self.output = []
+        self.e3 = 0
+        self.low = 0
+
+        self.high = 0
+        for h in range(self.m):
+            self.high += 2 ** h
+
+        self.D = [{} for _ in range(self.N + 1)]
+
+    def full_encoding(self, sequence):
+        partial_encoding, no_bytes = self.encode(sequence)
+        complete_encoding = self.terminate_encoding(partial_encoding)
+        data = self.output_data(complete_encoding, no_bytes)
+        data = (data[0], data[1], no_bytes)
+        self.reset()
+
+        return complete_encoding, data
+
+
+file = sys.argv[1]
+file_name, extension = os.path.splitext(file)
+print("File name: ", file_name)
+print("File:", file)
+
+# change to .tex in final implementation
+if extension != ".tex":
+    print("Extension:", extension)
+    print("Not a LaTeX file!")
+    exit(1)
+
+with open(file, 'rb') as f:
+    message = f.read()
+    message += b'\x04'
+
+encoder = PPMEncoder()
+encoding, info = encoder.full_encoding(message)
+
+# print("\ncompressing sequence:", message)
+# print("input file size:", info[2])
+# print("output file size:", info[1])
+# print("compression ratio:", info[0])
+
+# print("\nencoding:", encoding)
+
+# print("\nFinal value of self.m = {}".format(encoder.m))
+# print("\nCOUNTS = {}\n".format(encoder.counts))
+
+# print("Encoding:", encoding[:25])
+# print("Type:", type(encoding))
+
+with open(file_name + '.lz', 'w') as file:
+    m_val = format(encoder.m, 'b').zfill(8)
+    encoding = m_val + encoding
+    file.write(encoding)
+
+print("\nENCODING COMPLETE!!\n")

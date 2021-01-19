@@ -4,101 +4,90 @@ import math
 import pickle
 
 
-def get_interval(symb, total):
+class ArithmeticEncoder:
 
-    # keys = list(table.keys())
-    # prev_p = table[keys[keys.index(symb) - 1]]
-    # p = table[symb]
+    def __init__(self, freq_table=None, max_freq=256):
+        self.max_freq = max_freq
+        self.m = 8
+        self.e3 = 0
+        self.low = 0
+        self.high = 255
 
-    p = (int(symb) + 1) / total
-    prev_p = int(symb) / total
+        if freq_table is None:
+            self.freq_table = [n for n in range(self.max_freq + 1)]
+        else:
+            self.freq_table = freq_table
 
-    print("1) Interval found: symbol = {}, interval = [{}/{},{}/{}) = [{},{})".format(repr(symb), prev_p, total, p, total, prev_p/total, p/total))
+    def encode(self, sequence):
+        byte_count = 0
+        output = []
 
-    # prev_p = prev_p / total
-    # p = p / total
+        for byte in sequence:
+            byte_count += 1
 
-    if prev_p > p:
-        print("Error, probability interval calculated incorrectly: [{}, {})".format(prev_p, p))
-        exit(1)
+            low_prev = self.low
+            high_prev = self.high
 
-    return prev_p, p
+            self.low = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[byte]) / self.max_freq)
+            self.high = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[byte + 1]) / self.max_freq) - 1
 
+            l = format(self.low).zfill(self.m)
+            h = format(self.high).zfill(self.m)
 
-def arithmetic_encoder(l_old_bin, h_old_bin, e3_count, m, l_prob, h_prob):
+            while (l[0] == h[0]) or (l[1] == '1' and h[1] == '0'):
+                l = format(self.low, 'b').zfill(self.m)
+                h = format(self.high, 'b').zfill(self.m)
 
-    print("2) encoding inputs: low = {}, high = {}, e3 count = {}, low prob = {}, high_prob = {}".format(l_old_bin, h_old_bin, e3_count, l_prob, h_prob))
+                if l[0] == h[0]:
+                    # e1/e2 condition
+                    output.append(l[0])
+                    e3_bit = '0' if l[0] == '1' else '1'
 
-    out = ''
-    l_old = int(l_old_bin, 2)
-    h_old = int(h_old_bin, 2)
+                    l = l[1:] + '0'
+                    h = h[1:] + '1'
+                    self.low = int(l, 2)
+                    self.high = int(h, 2)
 
-    print(" a. converting to binary: low = {}, high = {}".format(l_old_bin, h_old_bin))
+                    output.extend([e3_bit] * self.e3)
+                    self.e3 = 0
 
-    l_new_bin = l_old + math.floor((h_old - l_old + 1) * l_prob)
-    h_new_bin = l_old + math.floor((h_old - l_old + 1) * h_prob) - 1
+                elif l[1] == '1' and h[1] == '0':
+                    l = l[0] + l[2:] + '0'
+                    h = h[0] + h[2:] + '1'
+                    self.low = int(l, 2)
+                    self.high = int(h, 2)
 
-    l_new = format(l_new_bin, 'b')
-    l = l_new + '0' * (m - len(l_new))
-    h_new = format(h_new_bin, 'b')
-    h = h_new + '1' * (m - len(h_new))
+                    self.e3 += 1
 
-    print(" b. new low and high: low = {} -> {} -> {}, high = {} -> {} -> {}".format(l_new_bin, l_new, l, h_new_bin, h_new, h))
-    print(" c. checking conditions...")
+        return output, byte_count
 
-    while ((l[0] == h[0]) or (l[1] == '1' and h[1] == '0')) is True:
+    def terminate_encoding(self, output):
+        l = format(self.low, 'b').zfill(self.m)
 
-        if l[0] == h[0]:
-            e3_bit = '0' if l[0] == '1' else '1'
-            out += l[0] + e3_bit * e3_count
-            e3_count = 0
-            l = l[1:] + '0'
-            h = h[1:] + '1'
-            print("  i. e1/e2 condition: low = {}, high = {}".format(l, h))
+        output.append(l[0])
+        output.extend(['1'] * self.e3)
+        output.append(l[1:])
+        outbits = "".join(output)
 
-        if l[1] == '1' and h[1] == '0':
-            l = '0' + l[2:] + '0'
-            h = '1' + h[2:] + '1'
-            e3_count += 1
-            print("  ii. e3 condition: low = {}, high = {}".format(l, h))
+        self.e3 = 0
+        self.low = 0
+        self.high = 255
 
-    print(" d. updates and outputs: low = {}, high = {}, output = {}, e3 count = {}".format(l, h, out, e3_count), end='\n\n')
+        return outbits
 
-    return l, h, e3_count, out
+    def output_data(self, outbits, byte_count):
+        output_size = len(outbits) / self.m
+        ratio = byte_count / output_size
 
+        return ratio, output_size
 
-def terminate_encoding(l, e3):
+    def full_encoding(self, sequence):
+        partial_encoding, no_bytes = self.encode(sequence)
+        finished_encoding = self.terminate_encoding(partial_encoding)
+        data = self.output_data(finished_encoding, no_bytes)
+        data = (data[0], data[1], no_bytes)
 
-    print("3) Terminating encoding: final low = {}, e3 count = {}".format(l, e3))
-
-    if e3 > 0:
-        msb = l[0]
-        e3_bit = '0' if msb == '1' else '1'
-        out = msb + e3_bit * e3 + l[1:]
-        print(" a. complementing output: e3 bits = {}".format(e3_bit))
-    else:
-        out = l
-        print(" b. no complements needed")
-
-    print(" c. outputting: {}".format(out))
-    return out
-
-
-max_char = 128
-# table_vals = {chr(v): v+1 for v in range(max_char)}
-# table = {'': 0}
-# table.update(table_vals)
-# print("char table:", table, end='\n\n')
-
-
-
-outputs = []
-code = ''
-m = 8
-low = '0' * m
-high = '1' * m
-e3_counter = 0
-length = 0
+        return finished_encoding, data
 
 
 file = sys.argv[1]
@@ -106,30 +95,22 @@ file_name, extension = os.path.splitext(file)
 print("File name: ", file_name)
 
 # change to .tex in final implementation
-if extension != ".txt":
+if extension != ".tex":
     print("Not a LaTeX file!")
     exit(1)
 
 with open(file, 'rb') as f:
-    for line in f:
-        print("\nLine:", repr(line))
+    message = f.read()
 
-        for char in line:
-            print("Byte: {}, Char: {}".format(char, repr(chr(char))))
+encoder = ArithmeticEncoder()
+encoding, info = encoder.full_encoding(message)
 
-            length += 1
-            print("ENCODING SYMBOL INDEXED {}".format(length))
+print("compressing sequence:", message)
+print("input file size:", info[2])
+print("output file size:", info[1])
+print("compression ratio:", info[0])
 
-            low_prob, high_prob = get_interval(char, max_char)
-            outputs.append({"symbol": char, "low": low_prob, "high": high_prob})
+print("\nencoding:", encoding)
 
-            low, high, e3_counter, codeword = arithmetic_encoder(low, high, e3_counter, m, low_prob, high_prob)
-            code += codeword
-
-terminal_code = terminate_encoding(low, e3_counter)
-code += terminal_code
-
-print("Output encoding:", code)
-
-with open(file_name + ".lz", 'wb') as f:
-    pickle.dump(code, f)
+with open(file_name + '.lz', 'wb') as file:
+    pickle.dump(encoding, file)

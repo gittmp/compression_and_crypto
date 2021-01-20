@@ -333,7 +333,7 @@ class PPMDecoder:
 
 file = sys.argv[1]
 file_name, extension = os.path.splitext(file)
-print("File name: ", file_name)
+# print("File name: ", file_name)
 
 if extension != ".lz":
     print("Not a compatible compressed file!")
@@ -351,5 +351,3 @@ message, info = decoder.full_decoding(encoding)
 
 with open(file_name + "-decoded.tex", 'wb') as f:
     f.write(message)
-
-print("\nDECODING COMPLETE!!\n")

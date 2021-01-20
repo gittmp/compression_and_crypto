@@ -82,7 +82,6 @@ class PPMEncoder:
             byte = sequence[b]
             order = self.N
             excluded = []
-            # print("\nBYTE NO. = {}, BYTE = {}".format(byte_count, byte))
 
             while order > -2:
                 if order > -1:
@@ -271,8 +270,8 @@ class PPMEncoder:
 
 file = sys.argv[1]
 file_name, extension = os.path.splitext(file)
-print("File name: ", file_name)
-print("File:", file)
+# print("File name: ", file_name)
+# print("File:", file)
 
 # change to .tex in final implementation
 if extension != ".tex":
@@ -295,5 +294,3 @@ with open(file_name + '.lz', 'w') as file:
     m_val = format(encoder.m, 'b').zfill(8)
     encoding = m_val + encoding
     file.write(encoding)
-
-print("\nENCODING COMPLETE!!\n")

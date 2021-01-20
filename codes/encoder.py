@@ -96,7 +96,7 @@ class PPMEncoder:
                     else:
                         context = str([byt for byt in sequence[b - order:b]])
 
-                    probabilities, excluded = self.ppm_step(str(byte), order, context, excluded)
+                    probabilities, excluded = self.ppm_step(str(byte), order, context, excluded, count=byte_count)
                     low_prob = probabilities['l_prob']
                     high_prob = probabilities['h_prob']
                     total = probabilities['sum']
@@ -174,10 +174,11 @@ class PPMEncoder:
 
         return outbits
 
-    def increment(self, symbol):
-        return 1
+    def increment(self, count):
+        incr = max(1, math.floor(count / 25000))
+        return incr
 
-    def ppm_step(self, symbol, n, c, exclusion_list):
+    def ppm_step(self, symbol, n, c, exclusion_list, count=0):
         if c in self.D[n].keys():
             sum_values = sum([self.D[n][c][k] for k in self.D[n][c].keys() if k not in exclusion_list])
 
@@ -194,7 +195,7 @@ class PPMEncoder:
                         if key == symbol:
                             break
 
-                    increment = self.increment(symbol)
+                    increment = self.increment(count)
                     self.D[n][c][symbol] += increment
                     out = {"symbol": int(symbol), "l_prob": prev_cum_freq, "h_prob": cum_freq, "sum": sum_values}
                 else:
@@ -210,7 +211,7 @@ class PPMEncoder:
 
                     if symbol in keys:
                         # if symbol in keys, increment it and esc (as count must be zero)
-                        increment = self.increment(symbol)
+                        increment = self.increment(count)
                         self.D[n][c][symbol] += increment
                         self.D[n][c]["esc"] += 1
                     else:
@@ -224,7 +225,7 @@ class PPMEncoder:
                 # if all values in context section are zero, encode esc with probability interval 0 - 1
                 if symbol in keys:
                     # if symbol in keys, increment it as count must be zero and increment sc to show there's a non-zero
-                    increment = self.increment(symbol)
+                    increment = self.increment(count)
                     self.D[n][c][symbol] += increment
                     self.D[n][c]["esc"] += 1
                 else:

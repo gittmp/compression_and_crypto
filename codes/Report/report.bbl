@@ -1,0 +1,35 @@
+\begin{thebibliography}{1}
+
+\bibitem{61469}
+A.~{Moffat}.
+\newblock Implementing the ppm data compression scheme.
+\newblock {\em IEEE Transactions on Communications}, 38(11):1917--1921, 1990.
+
+\bibitem{1663782}
+F.~{Choong}, M.~B.~I. {Reaz}, T.~C. {Chin}, and F.~{Mohd-Yasin}.
+\newblock Design and implementation of a data compression scheme: A partial
+  matching approach.
+\newblock In {\em International Conference on Computer Graphics, Imaging and
+  Visualisation (CGIV'06)}, pages 150--155, 2006.
+
+\bibitem{8026179}
+J.~{Ding}, I.~{Wang}, and H.~{Chen}.
+\newblock Improved efficiency on adaptive arithmetic coding for data
+  compression using range-adjusting scheme, increasingly adjusting step, and
+  mutual-learning scheme.
+\newblock {\em IEEE Transactions on Circuits and Systems for Video Technology},
+  28(12):3412--3423, 2018.
+
+\bibitem{SAYOOD201889}
+Khalid Sayood.
+\newblock Chapter 4 - arithmetic coding.
+\newblock In Khalid Sayood, editor, {\em Introduction to Data Compression
+  (Fifth Edition)}, The Morgan Kaufmann Series in Multimedia Information and
+  Systems, pages 89 -- 130. Morgan Kaufmann, fifth edition edition, 2018.
+
+\bibitem{inproceedings}
+M.~Külekci.
+\newblock Compressed context modeling for text compression.
+\newblock pages 373 -- 382, 05 2011.
+
+\end{thebibliography}

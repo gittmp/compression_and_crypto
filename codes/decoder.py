@@ -134,7 +134,7 @@ class PPMDecoder:
                             # if PPM found the correct byte:
                             if found:
                                 # backtrack update PPM table orders n -> self.N given seen contexts/symbol
-                                self.backtrack_update(order, str(symbol))
+                                self.backtrack_update(order, str(symbol), count=byte_count)
 
                                 if symbol == 4:
                                     self.EOF = True
@@ -156,7 +156,7 @@ class PPMDecoder:
                         exit(1)
 
                     # backtrack update PPM table orders 0 -> self.N given seen contexts/symbol
-                    self.backtrack_update(order, str(symbol))
+                    self.backtrack_update(order, str(symbol), count=byte_count)
 
                     if symbol == 4:
                         self.EOF = True
@@ -262,10 +262,11 @@ class PPMDecoder:
 
         self.binary_tag = self.full_tag[self.start:self.start + self.m]
 
-    def increment(self, symbol):
-        return 1
+    def increment(self, count):
+        incr = max(1, math.floor(count / 25000))
+        return incr
 
-    def backtrack_update(self, n, symb):
+    def backtrack_update(self, n, symb, count=0):
         n = max(n, 0)
         current_output = self.output[:-1]
 
@@ -289,7 +290,7 @@ class PPMDecoder:
                         # if the symbol exists but is zero increment esc count (PPM method B) as well as symbol count
                         self.D[n][c]["esc"] += 1
 
-                    increment = self.increment(symb)
+                    increment = self.increment(count)
                     self.D[n][c][symb] += increment
                 else:
                     esc_count = self.D[n][c].pop("esc", 0)

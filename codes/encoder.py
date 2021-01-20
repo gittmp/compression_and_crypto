@@ -56,7 +56,7 @@ class PPMEncoder:
             # 192 - 255 is level 1
             return 1
 
-    def make_freq_table(self, s=0.55):
+    def make_freq_table(self, s=0.5):
         distribution = [1] * self.max_freq
 
         for b in range(len(distribution)):
@@ -241,12 +241,6 @@ class PPMEncoder:
 
         return out, exclusion_list
 
-    def output_data(self, outbits, byte_count):
-        output_size = len(outbits) / self.m
-        ratio = byte_count / output_size
-
-        return ratio, output_size
-
     def reset(self):
         self.output = []
         self.e3 = 0
@@ -261,11 +255,25 @@ class PPMEncoder:
     def full_encoding(self, sequence):
         partial_encoding, no_bytes = self.encode(sequence)
         complete_encoding = self.terminate_encoding(partial_encoding)
-        data = self.output_data(complete_encoding, no_bytes)
-        data = (data[0], data[1], no_bytes)
+
+        m_val = format(self.m, 'b').zfill(8)
+        complete_encoding = m_val + complete_encoding
+
+        enc_bytes = bytearray()
+        index = 0
+        while index < len(complete_encoding):
+            if len(complete_encoding[index:]) >= 8:
+                byte_str = complete_encoding[index:index + 8]
+            else:
+                byte_str = complete_encoding[index:] + '0' * (8 - len(complete_encoding[index:]))
+
+            byte_int = int(byte_str, 2)
+            enc_bytes.append(byte_int)
+            index += 8
+
         self.reset()
 
-        return complete_encoding, data
+        return enc_bytes
 
 
 file = sys.argv[1]
@@ -284,13 +292,7 @@ with open(file, 'rb') as f:
     message += b'\x04'
 
 encoder = PPMEncoder()
-encoding, info = encoder.full_encoding(message)
+encoding = encoder.full_encoding(message)
 
-# print("Input file size:", info[2])
-# print("Output file size:", info[1])
-# print("Compression ratio:", info[0])
-
-with open(file_name + '.lz', 'w') as file:
-    m_val = format(encoder.m, 'b').zfill(8)
-    encoding = m_val + encoding
+with open(file_name + '.lz', 'wb') as file:
     file.write(encoding)

@@ -61,7 +61,7 @@ class PPMDecoder:
             # 192 - 255 is level 1
             return 1
 
-    def make_freq_table(self, s=0.55):
+    def make_freq_table(self, s=0.5):
         distribution = [1] * self.max_freq
 
         for b in range(len(distribution)):
@@ -77,9 +77,15 @@ class PPMDecoder:
 
         return cum_distribution
 
+    def convert_to_bits(self, byte_array):
+        for byte in byte_array:
+            bit = format(byte, 'b').zfill(8)
+            self.full_tag += bit
+
     def extract_m(self, full_tag):
-        self.m = int(full_tag[:8], 2)
-        self.full_tag = full_tag[8:]
+        self.convert_to_bits(full_tag)
+        self.m = int(self.full_tag[:8], 2)
+        self.full_tag = self.full_tag[8:]
 
         self.high = 0
         for h in range(self.m):
@@ -161,7 +167,6 @@ class PPMDecoder:
                     if symbol == 4:
                         self.EOF = True
                         self.output = self.output[:-1]
-
                     break
 
         self.output = bytes(self.output)
@@ -302,13 +307,6 @@ class PPMDecoder:
             # increment n
             n += 1
 
-    def output_data(self, seq, output):
-        enc_size = len(seq) / self.m
-        dec_size = len(output)
-        ratio = dec_size / enc_size
-
-        return enc_size, dec_size, ratio
-
     def reset(self):
         self.e3 = 0
         self.low = 0
@@ -325,10 +323,9 @@ class PPMDecoder:
 
     def full_decoding(self, sequence):
         decoding = self.decode(sequence)
-        data = self.output_data(sequence, decoding)
         self.reset()
 
-        return decoding, data
+        return decoding
 
 
 file = sys.argv[1]
@@ -339,15 +336,11 @@ if extension != ".lz":
     print("Not a compatible compressed file!")
     exit(1)
 
-with open(file, 'r') as file:
+with open(file, 'rb') as file:
     encoding = file.read()
 
 decoder = PPMDecoder()
-message, info = decoder.full_decoding(encoding)
-
-# print("Input file size:", info[0])
-# print("Output file size:", info[1])
-# print("Compression ratio:", info[2])
+message = decoder.full_decoding(encoding)
 
 with open(file_name + "-decoded.tex", 'wb') as f:
     f.write(message)

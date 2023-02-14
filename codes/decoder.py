@@ -25,43 +25,48 @@ class PPMDecoder:
         self.EOF = False
         self.output = []
 
-    def make_freq_table(self, s=0):
+    @staticmethod
+    def classify_byte(byte):
+        if 0 <= byte <= 31:
+            # 0-31 is level 3
+            return 3
+        elif 32 <= byte <= 47:
+            # 32 - 47 is level 4
+            return 4
+        elif 48 <= byte <= 57:
+            # 48 - 57 is level 3
+            return 3
+        elif 58 <= byte <= 64:
+            # 58 - 64 is level 2
+            return 2
+        elif 65 <= byte <= 90:
+            # 65 - 90 is level 3
+            return 3
+        elif 91 <= byte <= 96:
+            # 91 - 96 is level 3
+            return 3
+        elif 97 <= byte <= 122:
+            # 97 - 122 is level 5
+            return 5
+        elif 123 <= byte <= 126:
+            # 123 - 126 is level 3
+            return 3
+        elif 127 <= byte <= 160:
+            # 127 - 160 is level 1
+            return 1
+        elif 161 <= byte <= 191:
+            # 161 - 191 is level 1
+            return 1
+        elif 192 <= byte <= 255:
+            # 192 - 255 is level 1
+            return 1
+
+    def make_freq_table(self, s=0.5):
         distribution = [1] * self.max_freq
 
-        for i in range(len(distribution)):
-            if 0 <= i <= 31:
-                # 0-31 is level 3
-                distribution[i] = math.floor(math.exp(s * 3))
-            elif 32 <= i <= 47:
-                # 32 - 47 is level 4
-                distribution[i] = math.floor(math.exp(s * 4))
-            elif 48 <= i <= 57:
-                # 48 - 57 is level 3
-                distribution[i] = math.floor(math.exp(s * 3))
-            elif 58 <= i <= 64:
-                # 58 - 64 is level 2
-                distribution[i] = math.floor(math.exp(s * 2))
-            elif 65 <= i <= 90:
-                # 65 - 90 is level 3
-                distribution[i] = math.floor(math.exp(s * 3))
-            elif 91 <= i <= 96:
-                # 91 - 96 is level 3
-                distribution[i] = math.floor(math.exp(s * 3))
-            elif 97 <= i <= 122:
-                # 97 - 122 is level 5
-                distribution[i] = math.floor(math.exp(s * 5))
-            elif 123 <= i <= 126:
-                # 123 - 126 is level 3
-                distribution[i] = math.floor(math.exp(s * 3))
-            elif 127 <= i <= 160:
-                # 127 - 160 is level 1
-                distribution[i] = math.floor(math.exp(s * 1))
-            elif 161 <= i <= 191:
-                # 161 - 191 is level 1
-                distribution[i] = math.floor(math.exp(s * 1))
-            elif 192 <= i <= 255:
-                # 192 - 255 is level 1
-                distribution[i] = math.floor(math.exp(s * 1))
+        for b in range(len(distribution)):
+            x = self.classify_byte(b)
+            distribution[b] = math.floor(math.exp(s * x))
 
         cum_distribution = [0]
         for j in range(len(distribution)):
@@ -70,16 +75,17 @@ class PPMDecoder:
 
         self.max_freq = cum_distribution[-1]
 
-        print("Cumulative frequency table:")
-        print("   length =", len(cum_distribution))
-        print("   max freq =", self.max_freq)
-        # print("   values =", cum_distribution)
-
         return cum_distribution
 
+    def convert_to_bits(self, byte_array):
+        for byte in byte_array:
+            bit = format(byte, 'b').zfill(8)
+            self.full_tag += bit
+
     def extract_m(self, full_tag):
-        self.m = int(full_tag[:8], 2)
-        self.full_tag = full_tag[8:]
+        self.convert_to_bits(full_tag)
+        self.m = int(self.full_tag[:8], 2)
+        self.full_tag = self.full_tag[8:]
 
         self.high = 0
         for h in range(self.m):
@@ -91,21 +97,16 @@ class PPMDecoder:
         self.int_tag = int(self.binary_tag, 2)
         byte_count = 0
 
-        print("decoded value of self.m = {}\n".format(self.m))
-
         while self.binary_tag != '' and self.EOF is False:
 
             byte_count += 1
             order = self.N
             excluded = []
-            # print("\nBYTE NO. =", byte_count)
 
             while order > -2:
-                # print("ORDER =", order)
                 if order > -1:
                     # find corresponding context to current order
                     if len(self.output) < order:
-                        # byts = ["-"] * (order - len(self.output))
                         char_list = [116, 104, 101, 32, 116, 104]
                         byts = char_list[:order - len(self.output)]
 
@@ -119,12 +120,9 @@ class PPMDecoder:
                     if context not in self.D[order].keys():
                         # no need to update self.low and self.high on this esc as low_prob = 0.0 and high_prob = 1.0
                         # decrement order and repeat
-                        # print("context not in D[{}]".format(order))
                         order -= 1
                     # if found:
                     else:
-                        # print("found context: D[{}][{}] = {}".format(order, context, self.D[order][context]))
-
                         # check if corresponding table row contains any non-zero entries
                         sum_values = sum([self.D[order][context][k] for k in self.D[order][context].keys() if k not in excluded])
 
@@ -132,23 +130,19 @@ class PPMDecoder:
                         if sum_values == 0:
                             # no need to update self.low and self.high on this esc as low_prob = 0.0 and high_prob = 1.0
                             # decrement order and repeat
-                            # print("no non-zero entries in D[{}]".format(order))
                             order -= 1
                         # if there are non-zero entries:
                         else:
-                            # print("2) non-zero context values found in D[{}]: sum_values = {}, excluded = {}".format(order, sum_values, excluded))
 
                             found, excluded, symbol = self.ppm_update(sum_values, order, context, excluded)
                             self.process_lht()
 
                             # if PPM found the correct byte:
                             if found:
-                                # print("Found byte = {}".format(symbol))
                                 # backtrack update PPM table orders n -> self.N given seen contexts/symbol
-                                self.backtrack_update(byte_count, order, str(symbol))
+                                self.backtrack_update(order, str(symbol), count=byte_count)
 
                                 if symbol == 4:
-                                    # print("\nFOUND EOF, BREAKING\n")
                                     self.EOF = True
                                     self.output = self.output[:-1]
 
@@ -156,7 +150,6 @@ class PPMDecoder:
                             # otherwise, if symbol is esc:
                             else:
                                 # decrement order and repeat
-                                # print("Byte not found, symbol = 'esc'")
                                 order -= 1
                 # if order == -1:
                 else:
@@ -164,24 +157,17 @@ class PPMDecoder:
                     symbol = self.order_minus1_update()
                     self.process_lht()
 
-                    # print("decoding in order -1, found byte = {}, type = {}".format(symbol, type(symbol)))
                     if not (0 <= int(symbol) < 256):
                         print("\nERROR, decoded symbol invalid:", symbol)
                         exit(1)
 
                     # backtrack update PPM table orders 0 -> self.N given seen contexts/symbol
-                    self.backtrack_update(byte_count, order, str(symbol))
+                    self.backtrack_update(order, str(symbol), count=byte_count)
 
                     if symbol == 4:
-                        # print("\nFOUND EOF, BREAKING\n")
                         self.EOF = True
                         self.output = self.output[:-1]
-
                     break
-
-            # print("CURRENT OUTPUT =", repr(bytes(self.output)))
-
-            # print("self.output = {}".format(self.output))
 
         self.output = bytes(self.output)
 
@@ -191,7 +177,6 @@ class PPMDecoder:
         self.int_tag = int(self.binary_tag, 2)
 
         # calculate frequency value (based on sum of non-zero entries)
-        # print("frequency = ((({} - {} + 1) * {}) - 1) / ({} - {} + 1)".format(self.int_tag, self.low, sum_values, self.high, self.low))
         frequency = (((self.int_tag - self.low + 1) * sum_values) - 1) / (self.high - self.low + 1)
 
         # find low prob and high prob using PPM table, and associated symbol
@@ -200,14 +185,10 @@ class PPMDecoder:
         low_bound = 0
         high_bound = self.D[n][c][keys[0]]
 
-        # print("searching table: D[{}][{}] = {}".format(n, c, self.D[n][c]))
-
         while frequency >= high_bound:
             j += 1
             low_bound = high_bound
             high_bound += self.D[n][c][keys[j]]
-
-        # print("found bound = [{}, {}), j= {}".format(low_bound, high_bound, j))
 
         symbol = keys[j]
 
@@ -241,7 +222,6 @@ class PPMDecoder:
         self.int_tag = int(self.binary_tag, 2)
 
         frequency = (((self.int_tag - self.low + 1) * self.max_freq) - 1) / (self.high - self.low + 1)
-        # print("frequency = {}".format(frequency))
 
         bound = 0
         while self.freq_table[bound] <= frequency and bound < self.max_freq:
@@ -256,8 +236,6 @@ class PPMDecoder:
 
         self.low = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[bound - 1]) / self.max_freq)
         self.high = low_prev + math.floor(((high_prev - low_prev + 1) * self.freq_table[bound]) / self.max_freq) - 1
-
-        # print("found bound = [{}, {})".format(bound - 1, bound))
 
         symbol = bound - 1
         self.output.append(symbol)
@@ -289,9 +267,11 @@ class PPMDecoder:
 
         self.binary_tag = self.full_tag[self.start:self.start + self.m]
 
-    def backtrack_update(self, current_position, n, symb):
-        # NOTE: when adding new symbols, remember to convert to a string as its a byte
-        # print("BACKTRACKING TO UPDATE D")
+    def increment(self, count):
+        incr = max(1, math.floor(count / 25000))
+        return incr
+
+    def backtrack_update(self, n, symb, count=0):
         n = max(n, 0)
         current_output = self.output[:-1]
 
@@ -300,7 +280,6 @@ class PPMDecoder:
             if n == 0:
                 c = '[]'
             elif len(current_output) <= n:
-                # byts = ["-"] * (n - len(current_output))
                 char_list = [116, 104, 101, 32, 116, 104]
                 byts = char_list[:n - len(current_output)]
 
@@ -315,7 +294,9 @@ class PPMDecoder:
                     if self.D[n][c][symb] == 0:
                         # if the symbol exists but is zero increment esc count (PPM method B) as well as symbol count
                         self.D[n][c]["esc"] += 1
-                    self.D[n][c][symb] += 1
+
+                    increment = self.increment(count)
+                    self.D[n][c][symb] += increment
                 else:
                     esc_count = self.D[n][c].pop("esc", 0)
                     self.D[n][c][symb] = 0
@@ -325,13 +306,6 @@ class PPMDecoder:
 
             # increment n
             n += 1
-
-    def output_data(self, seq, output):
-        enc_size = len(seq) / self.m
-        dec_size = len(output)
-        ratio = dec_size / enc_size
-
-        return enc_size, dec_size, ratio
 
     def reset(self):
         self.e3 = 0
@@ -349,35 +323,24 @@ class PPMDecoder:
 
     def full_decoding(self, sequence):
         decoding = self.decode(sequence)
-        data = self.output_data(sequence, decoding)
         self.reset()
 
-        return decoding, data
+        return decoding
 
 
 file = sys.argv[1]
 file_name, extension = os.path.splitext(file)
-print("File name: ", file_name)
+# print("File name: ", file_name)
 
 if extension != ".lz":
     print("Not a compatible compressed file!")
     exit(1)
 
-with open(file, 'r') as file:
+with open(file, 'rb') as file:
     encoding = file.read()
 
-# print("Encoding:", encoding[:25])
-# print("Type:", type(encoding))
-
 decoder = PPMDecoder()
-message, info = decoder.full_decoding(encoding)
-
-# print("Input sequence:", encoding)
-# print("Input file size:", info[0])
-# print("Output file size:", info[1])
-# print("Output sequence:", message)
+message = decoder.full_decoding(encoding)
 
 with open(file_name + "-decoded.tex", 'wb') as f:
     f.write(message)
-
-print("\nDECODING COMPLETE!!\n")

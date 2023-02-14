@@ -1,0 +1,31 @@
+\begin{thebibliography}{1}
+
+\bibitem{Wiener94efficientdes}
+Michael~J. Wiener.
+\newblock Efficient des key search.
+\newblock Technical report, School of Computer Science, Carleton University,
+  1994.
+
+\bibitem{Diffie1977SpecialFE}
+W.~Diffie and M.~Hellman.
+\newblock Special feature exhaustive cryptanalysis of the nbs data encryption
+  standard.
+\newblock {\em Computer}, 10:74--84, 1977.
+
+\bibitem{Kumar2011InvestigationsIB}
+N.~Kumar.
+\newblock Investigations in brute force attack on cellular security based on
+  des and aes.
+\newblock 2011.
+
+\bibitem{article}
+Matt Curtin and Justin Dolske.
+\newblock A brute force search of des keyspace.
+\newblock 03 2001.
+
+\bibitem{Nakahara2018}
+Jorge Nakahara.
+\newblock {\em Attacks}, pages 117--604.
+\newblock Springer International Publishing, Cham, 2018.
+
+\end{thebibliography}
